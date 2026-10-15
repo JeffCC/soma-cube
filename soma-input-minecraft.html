@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Soma Cube 格子輸入 (Minecraft 風)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #eef1f3; --panel: #ffffff; --ink: #17212b; --muted: #5b6875;
+    --line: #d5dce2; --accent: #d2421b; --stage: #e3e8ec;
+    --cV: #e53935; --cL: #fb8c00; --cT: #fdd835; --cZ: #43a047;
+    --cA: #1e88e5; --cB: #8e24aa; --cP: #ec407a;
+    --font: "Noto Sans TC", "Microsoft JhengHei", -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; font-family: var(--font); color: var(--ink); background: var(--bg); font-size: 14px; }
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; max-width: 1300px; margin: 0 auto; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; font-weight: 900; }
+  h1 .accent { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; }
+  aside, main > .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  aside { display: grid; gap: 14px; align-content: start; }
+  aside h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pieces { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .pbtn { padding: 4px 2px 2px; border: 2px solid transparent; border-radius: 4px; cursor: pointer;
+    font: 700 14px var(--mono); color: #fff; position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 56px; }
+  .pbtn .ico { pointer-events: none; display: block; }
+  .pbtn .ico svg { display: block; width: 42px; height: 28px; }
+  .pbtn.V { background: var(--cV); } .pbtn.L { background: var(--cL); }
+  .pbtn.T { background: var(--cT); color: #333; } .pbtn.Z { background: var(--cZ); }
+  .pbtn.A { background: var(--cA); } .pbtn.B { background: var(--cB); } .pbtn.P { background: var(--cP); }
+  .pbtn.eraser { background: #e5e7eb; color: #333; }
+  .pbtn.active { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
+  .pbtn .count { position: absolute; top: 2px; right: 4px; font-size: 10px; font-weight: 600;
+    background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 2px; }
+  .pbtn.T .count { background: rgba(255,255,255,0.5); color: #333; }
+  .pbtn.ok { outline: 2px solid #10b981; outline-offset: 2px; }
+  .status { font-size: 13px; }
+  .status .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .status b { font-family: var(--mono); }
+  .controls { font-size: 13px; color: var(--muted); }
+  .controls ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
+  kbd { font: 600 11px var(--mono); background: var(--bg); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+  .actions { display: grid; gap: 6px; }
+  button.btn { padding: 8px 12px; background: var(--ink); color: #fff; border: none;
+    border-radius: 4px; cursor: pointer; font: 600 13px var(--font); }
+  button.btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.btn.sec { background: #e5e7eb; color: var(--ink); }
+  button.btn.sec:hover { background: #d1d5db; }
+  #stage { background: var(--stage); border-radius: 6px; height: 560px; position: relative; overflow: hidden; border: 1px solid var(--line); }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .overlay { position: absolute; top: 10px; left: 12px; display: flex; gap: 8px; pointer-events: none; flex-wrap: wrap; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 3px;
+    padding: 4px 8px; font: 600 12px var(--mono); letter-spacing: 0.03em; }
+  .chip.active { border-color: var(--accent); color: var(--accent); }
+  .hint { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--muted);
+    pointer-events: none; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 3px; }
+  #output { margin-top: 10px; }
+  .text-format { font-family: var(--mono); background: #f3f4f6; padding: 10px;
+    border-radius: 4px; white-space: pre; font-size: 13px; }
+  .export-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .export-row input { flex: 1; min-width: 200px; padding: 6px 8px; font: 500 13px var(--mono);
+    border: 1px solid var(--line); border-radius: 3px; }
+  .msg { padding: 8px 12px; border-radius: 4px; margin: 6px 0; font-size: 13px; }
+  .msg.ok { background: #d1fae5; color: #065f46; }
+  .msg.err { background: #fee2e2; color: #991b1b; }
+  .msg.warn { background: #fef3c7; color: #92400e; }
+  .msg.info { background: #dbeafe; color: #1e40af; }
+  .draft-info { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <h1>Soma Cube <span class="accent">格子</span>輸入</h1>
+    <span class="sub">選顏色後，直接點格子逐塊堆積（Minecraft 風格）· 自動存草稿</span>
+  </header>
+
+  <aside>
+    <div>
+      <h3>選顏色（哪個 piece）</h3>
+      <div class="pieces" id="palette">
+        <button class="pbtn V active" data-p="V">V<span class="count" id="cnt-V">0</span></button>
+        <button class="pbtn L" data-p="L">L<span class="count" id="cnt-L">0</span></button>
+        <button class="pbtn T" data-p="T">T<span class="count" id="cnt-T">0</span></button>
+        <button class="pbtn Z" data-p="Z">Z<span class="count" id="cnt-Z">0</span></button>
+        <button class="pbtn A" data-p="A">A<span class="count" id="cnt-A">0</span></button>
+        <button class="pbtn B" data-p="B">B<span class="count" id="cnt-B">0</span></button>
+        <button class="pbtn P" data-p="P">P<span class="count" id="cnt-P">0</span></button>
+        <button class="pbtn eraser" data-p="." title="右鍵也可以擦除">擦</button>
+      </div>
+      <p class="draft-info" id="draftInfo">草稿自動存在瀏覽器 · 下次打開會自動還原</p>
+    </div>
+    <div class="status" id="statusPanel">
+      <div class="row"><span>總格數</span><b id="totalCount">0 / 27</b></div>
+      <div class="row"><span>目標</span><b>V=3 其餘=4</b></div>
+    </div>
+    <div class="controls">
+      <h3>操作</h3>
+      <ul>
+        <li><kbd>左鍵點擊</kbd> 加方塊（顏色＝目前選的 piece）</li>
+        <li><kbd>右鍵點擊</kbd> 刪除方塊 （或選「擦」+左鍵）</li>
+        <li>點方塊的「某一面」會貼在那面之外的格子</li>
+        <li>點背景透明壁面可以在那面直接畫</li>
+        <li><kbd>左鍵拖曳</kbd> 或 <kbd>中鍵拖曳</kbd> 旋轉視角</li>
+        <li>滾輪 縮放</li>
+        <li><kbd>V</kbd><kbd>L</kbd><kbd>T</kbd><kbd>Z</kbd><kbd>A</kbd><kbd>B</kbd><kbd>P</kbd> 快速切色 · <kbd>X</kbd> 擦除</li>
+      </ul>
+    </div>
+    <div class="actions">
+      <button class="btn sec" id="btnClear">全部清除</button>
+      <button class="btn sec" id="btnSaveNamed">另存命名草稿</button>
+      <button class="btn sec" id="btnLoadNamed">載入命名草稿</button>
+      <button class="btn" id="btnExport">輸出 / 驗證</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="card">
+      <div id="stage">
+        <div class="overlay">
+          <span class="chip active" id="pieceChip">目前顏色：V</span>
+          <span class="chip" id="hoverChip">—</span>
+        </div>
+        <div class="hint">左鍵加 · 右鍵刪 · 中鍵/空白右拖＝旋轉</div>
+      </div>
+      <div id="output"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- Isometric SVG icon generator ----------
+function pieceIconSVG(cells, colorHex) {
+  const s = 6, cos30 = 0.866, sin30 = 0.5;
+  const toIso = (x,y,z) => [(x - y) * cos30 * s, (x + y) * sin30 * s - z * s];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [cx,cy,cz] of cells) {
+    for (const dx of [0,1]) for (const dy of [0,1]) for (const dz of [0,1]) {
+      const [sx,sy] = toIso(cx+dx, cy+dy, cz+dz);
+      if (sx < minX) minX = sx; if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+    }
+  }
+  const pad = 1, w = maxX - minX + pad*2, h = maxY - minY + pad*2;
+  const offX = -minX + pad, offY = -minY + pad;
+  const depth = c => -c[0] + c[1] - c[2];
+  const sorted = cells.slice().sort((a,b) => depth(b) - depth(a));
+  const hex = parseInt(colorHex.replace('#',''), 16);
+  const r0 = (hex>>16)&255, g0 = (hex>>8)&255, b0 = hex&255;
+  const sh = f => `rgb(${Math.min(255,Math.round(r0*f))},${Math.min(255,Math.round(g0*f))},${Math.min(255,Math.round(b0*f))})`;
+  const topC = sh(1.05), rightC = sh(0.75), frontC = sh(0.55), strokeC = sh(0.25);
+  const poly = (pts, fill) => `<polygon points="${pts.map(p=>`${(p[0]+offX).toFixed(1)},${(p[1]+offY).toFixed(1)}`).join(' ')}" fill="${fill}" stroke="${strokeC}" stroke-width="0.4" stroke-linejoin="round"/>`;
+  let faces = '';
+  for (const [cx,cy,cz] of sorted) {
+    // Visible faces for camera at (+x,-y,+z): +z top, +x right, -y front
+    const top = [[cx,cy,cz+1],[cx+1,cy,cz+1],[cx+1,cy+1,cz+1],[cx,cy+1,cz+1]].map(p=>toIso(...p));
+    const right = [[cx+1,cy,cz],[cx+1,cy+1,cz],[cx+1,cy+1,cz+1],[cx+1,cy,cz+1]].map(p=>toIso(...p));
+    const front = [[cx,cy,cz],[cx+1,cy,cz],[cx+1,cy,cz+1],[cx,cy,cz+1]].map(p=>toIso(...p));
+    faces += poly(front, frontC) + poly(right, rightC) + poly(top, topC);
+  }
+  return `<svg viewBox="0 0 ${w.toFixed(1)} ${h.toFixed(1)}" preserveAspectRatio="xMidYMid meet">${faces}</svg>`;
+}
+
+// ---------- Constants ----------
+const COLORS = {V:0xe53935, L:0xfb8c00, T:0xfdd835, Z:0x43a047, A:0x1e88e5, B:0x8e24aa, P:0xec407a};
+const COLOR_HEX = {V:'#e53935', L:'#fb8c00', T:'#fdd835', Z:'#43a047', A:'#1e88e5', B:'#8e24aa', P:'#ec407a'};
+const PIECES = ['V','L','T','Z','A','B','P'];
+const TARGETS = {V:3, L:4, T:4, Z:4, A:4, B:4, P:4};
+const DRAFT_KEY = 'somaMinecraftDraft';
+
+// Piece shape definitions (for validation)
+const SHAPES = {
+  V: [[0,0,0],[1,0,0],[0,1,0]],
+  L: [[0,0,0],[1,0,0],[2,0,0],[0,1,0]],
+  T: [[0,0,0],[1,0,0],[2,0,0],[1,1,0]],
+  Z: [[0,0,0],[1,0,0],[1,1,0],[2,1,0]],
+  A: [[0,0,0],[1,0,0],[1,1,0],[1,1,1]],
+  B: [[0,0,0],[1,0,0],[0,1,0],[0,1,1]],
+  P: [[0,0,0],[1,0,0],[0,1,0],[0,0,1]],
+};
+function normalize(cells) {
+  const mx = Math.min(...cells.map(c=>c[0]));
+  const my = Math.min(...cells.map(c=>c[1]));
+  const mz = Math.min(...cells.map(c=>c[2]));
+  return cells.map(([x,y,z]) => [x-mx, y-my, z-mz]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
+}
+// Generate all 24 rotations
+function matMul(A,B){ const r=[[0,0,0],[0,0,0],[0,0,0]]; for(let i=0;i<3;i++)for(let j=0;j<3;j++)for(let k=0;k<3;k++)r[i][j]+=A[i][k]*B[k][j]; return r; }
+function matKey(M){ return M.flat().join(','); }
+const I_M=[[1,0,0],[0,1,0],[0,0,1]], Rx_M=[[1,0,0],[0,0,-1],[0,1,0]], Ry_M=[[0,0,1],[0,1,0],[-1,0,0]], Rz_M=[[0,-1,0],[1,0,0],[0,0,1]];
+const ROTS = (() => {
+  const seen = {}, out = [], stack = [I_M]; seen[matKey(I_M)]=true;
+  while(stack.length){ const M=stack.pop(); out.push(M); for(const R of [Rx_M,Ry_M,Rz_M]){const N=matMul(R,M); const k=matKey(N); if(!seen[k]){seen[k]=true; stack.push(N);}} }
+  return out;
+})();
+function applyRot(M, cells) {
+  return cells.map(([x,y,z]) => [M[0][0]*x+M[0][1]*y+M[0][2]*z, M[1][0]*x+M[1][1]*y+M[1][2]*z, M[2][0]*x+M[2][1]*y+M[2][2]*z]);
+}
+// Returns true if `cells` matches `shape` under some rotation
+function matchesShape(cells, shape) {
+  const target = cells.map(c=>c.slice());
+  const normT = JSON.stringify(normalize(target));
+  for (const M of ROTS) {
+    const nc = JSON.stringify(normalize(applyRot(M, shape)));
+    if (nc === normT) return true;
+  }
+  return false;
+}
+
+// ---------- Three.js scene ----------
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xe3e8ec);
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+camera.position.set(6.5, 5.5, 6.5);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(1, 1, 1);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 20;
+// LEFT drag orbits (quick LEFT click still fires `click` event for placement).
+// RIGHT reserved for delete (via contextmenu). MIDDLE wheel-button also orbits.
+controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: null };
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+sun.position.set(6, 10, 6); scene.add(sun);
+
+// Puzzle (x,y,z) -> three (x, z, y). y=puzzle z (up), z=puzzle y (back-to-front).
+function P(x,y,z) { return new THREE.Vector3(x, z, y); }
+
+// Reference walls: bottom (z=0), left (x=0), back (y=0)
+const wallMat = new THREE.MeshPhysicalMaterial({
+  color: 0xbfe3ff, transparent: true, opacity: 0.17, roughness: 0.05, metalness: 0,
+  depthWrite: false, side: THREE.DoubleSide,
+});
+const planeGeo = new THREE.PlaneGeometry(3, 3);
+const wBottom = new THREE.Mesh(planeGeo, wallMat);
+wBottom.rotation.x = -Math.PI/2; wBottom.position.set(1, -0.5, 1); wBottom.userData.wall = 'bottom'; scene.add(wBottom);
+const wLeft = new THREE.Mesh(planeGeo, wallMat);
+wLeft.rotation.y = Math.PI/2; wLeft.position.set(-0.5, 1, 1); wLeft.userData.wall = 'left'; scene.add(wLeft);
+const wBack = new THREE.Mesh(planeGeo, wallMat);
+wBack.position.set(1, 1, -0.5); wBack.userData.wall = 'back'; scene.add(wBack);
+
+const wallEdgeMat = new THREE.LineBasicMaterial({ color: 0x6f8fa8, transparent: true, opacity: 0.6 });
+[wBottom, wLeft, wBack].forEach(w => {
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(planeGeo), wallEdgeMat);
+  e.position.copy(w.position); e.rotation.copy(w.rotation); scene.add(e);
+});
+
+function addGridLines(axis) {
+  const mat = new THREE.LineBasicMaterial({ color: 0x6f8fa8, transparent: true, opacity: 0.5 });
+  for (let i = -1; i <= 1; i++) {
+    let p1 = [], p2 = [];
+    if (axis === 'bottom') {
+      p1 = [new THREE.Vector3(i+0.5, -0.49, -0.5), new THREE.Vector3(i+0.5, -0.49, 2.5)];
+      p2 = [new THREE.Vector3(-0.5, -0.49, i+0.5), new THREE.Vector3(2.5, -0.49, i+0.5)];
+    } else if (axis === 'left') {
+      p1 = [new THREE.Vector3(-0.49, i+0.5, -0.5), new THREE.Vector3(-0.49, i+0.5, 2.5)];
+      p2 = [new THREE.Vector3(-0.49, -0.5, i+0.5), new THREE.Vector3(-0.49, 2.5, i+0.5)];
+    } else {
+      p1 = [new THREE.Vector3(i+0.5, -0.5, -0.49), new THREE.Vector3(i+0.5, 2.5, -0.49)];
+      p2 = [new THREE.Vector3(-0.5, i+0.5, -0.49), new THREE.Vector3(2.5, i+0.5, -0.49)];
+    }
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p1), mat));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p2), mat));
+  }
+}
+addGridLines('bottom'); addGridLines('left'); addGridLines('back');
+
+function textSprite(text, color) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+  const g = c.getContext('2d');
+  g.font = "700 32px 'Noto Sans TC', sans-serif";
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = color || '#5b6875'; g.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  m.scale.set(0.9, 0.45, 1); return m;
+}
+const lX = textSprite('→ x', '#d2421b'); lX.position.set(2.6, -0.5, 1); scene.add(lX);
+const lY = textSprite('↙ y', '#d2421b'); lY.position.set(1, -0.5, 2.6); scene.add(lY);
+const lZ = textSprite('↑ z', '#d2421b'); lZ.position.set(-0.5, 2.6, 1); scene.add(lZ);
+
+const originMarker = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshBasicMaterial({color: 0xd2421b}));
+originMarker.position.set(-0.5, -0.5, -0.5); scene.add(originMarker);
+
+// ---------- Voxel grid state ----------
+// grid[z*9 + y*3 + x] = piece letter or '.'
+let grid = new Array(27).fill('.');
+const cubeGeo = new THREE.BoxGeometry(0.94, 0.94, 0.94);
+const edgeGeo = new THREE.EdgesGeometry(cubeGeo);
+const voxelMeshes = {}; // key "x,y,z" -> { mesh, edge }
+
+function voxelKey(x,y,z) { return `${x},${y},${z}`; }
+
+function addVoxel(x, y, z, piece) {
+  const key = voxelKey(x,y,z);
+  removeVoxel(x, y, z);
+  const mat = new THREE.MeshStandardMaterial({ color: COLORS[piece], roughness: 0.6, metalness: 0.05 });
+  const mesh = new THREE.Mesh(cubeGeo, mat);
+  mesh.position.copy(P(x,y,z));
+  mesh.userData.cell = [x,y,z];
+  scene.add(mesh);
+  const emat = new THREE.LineBasicMaterial({ color: 0x0b1015, transparent: true, opacity: 0.4 });
+  const edge = new THREE.LineSegments(edgeGeo, emat);
+  edge.position.copy(mesh.position);
+  scene.add(edge);
+  voxelMeshes[key] = { mesh, edge };
+  grid[z*9 + y*3 + x] = piece;
+}
+function removeVoxel(x, y, z) {
+  const key = voxelKey(x,y,z);
+  const v = voxelMeshes[key];
+  if (!v) return false;
+  scene.remove(v.mesh); scene.remove(v.edge);
+  v.mesh.material.dispose();
+  delete voxelMeshes[key];
+  grid[z*9 + y*3 + x] = '.';
+  return true;
+}
+function clearAll() {
+  for (const key of Object.keys(voxelMeshes)) {
+    const [x,y,z] = key.split(',').map(Number);
+    removeVoxel(x,y,z);
+  }
+  grid = new Array(27).fill('.');
+  updateCounts();
+  saveDraft();
+  document.getElementById('output').innerHTML = '';
+}
+
+function swapAB() {
+  // Snapshot of current grid with A/B swapped
+  const newGrid = grid.map(ch => ch === 'A' ? 'B' : ch === 'B' ? 'A' : ch);
+  // Rebuild voxels (color change requires new material)
+  for (const key of Object.keys(voxelMeshes)) {
+    const [x,y,z] = key.split(',').map(Number);
+    removeVoxel(x,y,z);
+  }
+  grid = new Array(27).fill('.');
+  for (let i = 0; i < 27; i++) {
+    const ch = newGrid[i];
+    if (ch !== '.') {
+      const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+      addVoxel(x, y, z, ch);
+    }
+  }
+  updateCounts();
+  saveDraft();
+}
+
+// ---------- Ghost preview ----------
+const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.4,
+  roughness: 0.6, depthWrite: false });
+const ghostEdgeMat = new THREE.LineBasicMaterial({ color: 0x0b1015, transparent: true, opacity: 0.5 });
+const ghost = new THREE.Mesh(cubeGeo, ghostMat);
+const ghostEdge = new THREE.LineSegments(edgeGeo, ghostEdgeMat);
+scene.add(ghost); scene.add(ghostEdge);
+ghost.visible = false; ghostEdge.visible = false;
+
+function showGhost(x, y, z, piece) {
+  ghost.position.copy(P(x,y,z));
+  ghostEdge.position.copy(ghost.position);
+  ghostMat.color.setHex(piece === '.' ? 0xff4444 : COLORS[piece]);
+  ghost.visible = ghostEdge.visible = true;
+}
+function hideGhost() { ghost.visible = ghostEdge.visible = false; }
+
+// ---------- Interaction ----------
+let selectedPiece = 'V';
+let eraserMode = false;
+
+function setSelectedPiece(p) {
+  if (p === '.') { eraserMode = true; selectedPiece = '.'; }
+  else { eraserMode = false; selectedPiece = p; }
+  document.querySelectorAll('.pbtn').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+  const chip = document.getElementById('pieceChip');
+  chip.textContent = eraserMode ? '擦除模式' : `目前顏色：${p}`;
+  chip.style.background = eraserMode ? '#fff' : COLOR_HEX[p];
+  chip.style.color = (eraserMode || p === 'T') ? '#333' : '#fff';
+}
+document.querySelectorAll('.pbtn').forEach(btn => {
+  btn.onclick = () => setSelectedPiece(btn.dataset.p);
+});
+
+// Raycasting for click targets
+const raycaster = new THREE.Raycaster();
+const mouse2d = new THREE.Vector2();
+
+function getTargetCell(evt) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse2d.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse2d.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse2d, camera);
+  // Voxels first — ignore walls when voxels are in the ray (so walls don't block).
+  const voxelObjs = Object.values(voxelMeshes).map(v => v.mesh);
+  const voxelHits = raycaster.intersectObjects(voxelObjs, false);
+  if (voxelHits.length > 0) {
+    const h = voxelHits[0];
+    const [cx, cy, cz] = h.object.userData.cell;
+    const n = h.face.normal;
+    const dx = Math.round(n.x), dy = Math.round(n.z), dz = Math.round(n.y);
+    return { kind: 'face', existingCell: [cx, cy, cz], adjCell: [cx+dx, cy+dy, cz+dz] };
+  }
+  // No voxel hit — walls act as fallback placement surface for empty areas.
+  const wallObjs = [wBottom, wLeft, wBack];
+  const wallHits = raycaster.intersectObjects(wallObjs, false);
+  if (wallHits.length > 0) {
+    const h = wallHits[0];
+    const p = h.point;
+    const px = Math.round(p.x), py = Math.round(p.z), pz = Math.round(p.y);
+    let x = px, y = py, z = pz;
+    const w = h.object.userData.wall;
+    if (w === 'bottom') z = 0;
+    if (w === 'left') x = 0;
+    if (w === 'back') y = 0;
+    return { kind: 'wall', wall: w, cell: [x, y, z] };
+  }
+  return null;
+}
+
+function inBounds(cell) {
+  const [x,y,z] = cell;
+  return x>=0 && x<=2 && y>=0 && y<=2 && z>=0 && z<=2;
+}
+function isOccupied(cell) {
+  return !!voxelMeshes[voxelKey(...cell)];
+}
+
+function updateHoverChip(target) {
+  const chip = document.getElementById('hoverChip');
+  if (!target) { chip.textContent = '—'; return; }
+  const c = target.kind === 'face' ? target.adjCell : target.cell;
+  chip.textContent = `cell (${c[0]},${c[1]},${c[2]})`;
+}
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  const target = getTargetCell(e);
+  updateHoverChip(target);
+  if (!target) { hideGhost(); return; }
+  let cell;
+  if (target.kind === 'face') {
+    // Right-click intent would delete existing; left-click adds adjacent
+    cell = eraserMode ? target.existingCell : target.adjCell;
+  } else {
+    cell = target.cell;
+  }
+  if (!inBounds(cell) || (!eraserMode && isOccupied(cell))) {
+    hideGhost(); return;
+  }
+  if (eraserMode && !isOccupied(cell)) {
+    hideGhost(); return;
+  }
+  showGhost(...cell, eraserMode ? '.' : selectedPiece);
+});
+
+// Left-click = place (browser's native `click` handles click-vs-drag threshold).
+// Right-click = delete.
+renderer.domElement.addEventListener('click', (e) => {
+  const target = getTargetCell(e);
+  if (!target) return;
+  if (eraserMode) {
+    if (target.kind === 'face') removeVoxel(...target.existingCell);
+  } else {
+    const cell = target.kind === 'face' ? target.adjCell : target.cell;
+    if (inBounds(cell) && !isOccupied(cell)) {
+      addVoxel(cell[0], cell[1], cell[2], selectedPiece);
+    }
+  }
+  updateCounts();
+  saveDraft();
+});
+renderer.domElement.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const target = getTargetCell(e);
+  if (!target) return;
+  if (target.kind === 'face') {
+    removeVoxel(...target.existingCell);
+    updateCounts();
+    saveDraft();
+  }
+});
+
+// Keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const k = e.key.toUpperCase();
+  if ('VLTZABP'.includes(k)) setSelectedPiece(k);
+  else if (k === 'X') setSelectedPiece('.');
+});
+
+// ---------- UI updates ----------
+function updateCounts() {
+  const counts = {V:0,L:0,T:0,Z:0,A:0,B:0,P:0};
+  for (const ch of grid) if (ch !== '.') counts[ch]++;
+  let total = 0;
+  for (const p of PIECES) {
+    const el = document.getElementById('cnt-'+p);
+    el.textContent = counts[p];
+    total += counts[p];
+    const btn = document.querySelector(`.pbtn[data-p="${p}"]`);
+    btn.classList.toggle('ok', counts[p] === TARGETS[p]);
+  }
+  document.getElementById('totalCount').textContent = `${total} / 27`;
+}
+
+// ---------- Draft persistence ----------
+function saveDraft() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(grid)); } catch (e) {}
+}
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data) || data.length !== 27) return;
+    data.forEach((ch, i) => {
+      if (ch !== '.') {
+        const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+        if (PIECES.includes(ch)) addVoxel(x, y, z, ch);
+      }
+    });
+    updateCounts();
+  } catch (e) {}
+}
+
+document.getElementById('btnClear').onclick = () => {
+  if (confirm('全部清除？草稿也會被清空。')) clearAll();
+};
+document.getElementById('btnSaveNamed').onclick = () => {
+  const name = prompt('輸入命名草稿名稱：');
+  if (!name) return;
+  try {
+    const all = JSON.parse(localStorage.getItem('somaMinecraftNamed') || '{}');
+    all[name] = { grid, ts: new Date().toISOString() };
+    localStorage.setItem('somaMinecraftNamed', JSON.stringify(all));
+    alert(`已存為「${name}」`);
+  } catch (e) { alert('存檔失敗：' + e.message); }
+};
+document.getElementById('btnLoadNamed').onclick = () => {
+  try {
+    const all = JSON.parse(localStorage.getItem('somaMinecraftNamed') || '{}');
+    const names = Object.keys(all);
+    if (names.length === 0) { alert('沒有命名草稿'); return; }
+    const list = names.map((n,i) => `${i+1}. ${n} (${all[n].ts.slice(0,16).replace('T',' ')})`).join('\n');
+    const pick = prompt('選擇要載入的草稿編號：\n\n' + list);
+    const idx = parseInt(pick) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= names.length) return;
+    clearAll();
+    const data = all[names[idx]].grid;
+    data.forEach((ch, i) => {
+      if (ch !== '.') {
+        const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+        addVoxel(x, y, z, ch);
+      }
+    });
+    updateCounts();
+    saveDraft();
+  } catch (e) { alert('載入失敗：' + e.message); }
+};
+
+document.getElementById('btnExport').onclick = exportAndValidate;
+
+function exportAndValidate() {
+  const counts = {V:0,L:0,T:0,Z:0,A:0,B:0,P:0};
+  const perPiece = {V:[],L:[],T:[],Z:[],A:[],B:[],P:[]};
+  for (let i = 0; i < 27; i++) {
+    const ch = grid[i];
+    if (ch !== '.') {
+      const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+      counts[ch]++;
+      perPiece[ch].push([x,y,z]);
+    }
+  }
+  const total = Object.values(counts).reduce((a,b)=>a+b, 0);
+
+  const problems = [];
+  for (const p of PIECES) {
+    if (counts[p] === 0) problems.push(`${p}：還沒放`);
+    else if (counts[p] !== TARGETS[p]) problems.push(`${p}：有 ${counts[p]} 格（應為 ${TARGETS[p]}）`);
+  }
+  // Shape validation (only if counts right)
+  if (problems.length === 0) {
+    for (const p of PIECES) {
+      // Check connectivity: cells of piece p must be face-connected
+      const cells = perPiece[p];
+      const key = c => `${c[0]},${c[1]},${c[2]}`;
+      const set = new Set(cells.map(key));
+      const visited = new Set([key(cells[0])]);
+      const stack = [cells[0]];
+      while (stack.length) {
+        const [x,y,z] = stack.pop();
+        for (const [dx,dy,dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+          const k = `${x+dx},${y+dy},${z+dz}`;
+          if (set.has(k) && !visited.has(k)) { visited.add(k); stack.push([x+dx,y+dy,z+dz]); }
+        }
+      }
+      if (visited.size !== cells.length) {
+        problems.push(`${p}：方塊不相連`);
+        continue;
+      }
+      if (!matchesShape(cells, SHAPES[p])) {
+        problems.push(`${p}：形狀不符合（應為標準 ${p} 形的某個旋轉）`);
+      }
+    }
+  }
+
+  const s27 = grid.join('');
+  const layers = ['底層 (z=0)','中層 (z=1)','頂層 (z=2)'];
+  let txt = '';
+  for (let z = 0; z < 3; z++) {
+    txt += layers[z] + '\n';
+    for (let y = 0; y < 3; y++) {
+      let row = '  ';
+      for (let x = 0; x < 3; x++) row += grid[z*9+y*3+x] + ' ';
+      txt += row.trimEnd() + '\n';
+    }
+    if (z < 2) txt += '\n';
+  }
+
+  const out = document.getElementById('output');
+  let html = '';
+  if (problems.length === 0) {
+    html += `<div class="msg ok">✓ 合法 Soma 解答（${total}/27，所有方塊形狀正確）</div>`;
+  } else {
+    html += `<div class="msg warn">尚未完成 / 不合法（${total}/27）：<br>${problems.map(p=>'• '+p).join('<br>')}</div>`;
+  }
+  // Detect A/B swap case: both shapes wrong, counts correct — likely user swapped chirality labels
+  const abShapeIssue = problems.some(p => p.startsWith('A：形狀不符合')) && problems.some(p => p.startsWith('B：形狀不符合'));
+  if (abShapeIssue) {
+    html += `<div class="msg info">看起來可能是 A、B 顏色相反（手性弄反）。按下方按鈕一鍵互換試試：
+      <button class="btn" id="btnSwapAB" style="margin-left:8px">A ↔ B 互換</button></div>`;
+  }
+  html += `<div class="text-format">${txt}</div>
+    <div class="export-row">
+      <label>27 字格式：</label>
+      <input id="text27" value="${s27}" readonly onclick="this.select()">
+      <button class="btn sec" id="btnCopy">複製</button>
+      <button class="btn sec" id="btnOpenDB">在資料庫識別</button>
+    </div>`;
+  out.innerHTML = html;
+  if (abShapeIssue) {
+    document.getElementById('btnSwapAB').onclick = () => {
+      swapAB();
+      exportAndValidate();
+    };
+  }
+  document.getElementById('btnCopy').onclick = () => {
+    navigator.clipboard.writeText(s27);
+    document.getElementById('btnCopy').textContent = '已複製';
+    setTimeout(() => document.getElementById('btnCopy').textContent = '複製', 1500);
+  };
+  document.getElementById('btnOpenDB').onclick = () => {
+    if (problems.length) {
+      if (!confirm('目前還不是合法解答，資料庫會告訴你「無法識別」。繼續嗎？')) return;
+    }
+    window.open('soma-db.html#input=' + encodeURIComponent(s27), '_blank');
+  };
+}
+
+// ---------- Resize ----------
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+// ---------- Render loop ----------
+function loop() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- Inject piece icons ----------
+PIECES.forEach(p => {
+  const btn = document.querySelector(`.pbtn[data-p="${p}"]`);
+  if (!btn) return;
+  const ico = document.createElement('div');
+  ico.className = 'ico';
+  ico.innerHTML = pieceIconSVG(SHAPES[p], COLOR_HEX[p]);
+  // Insert icon BEFORE the count span so count stays at bottom-right
+  const countSpan = btn.querySelector('.count');
+  if (countSpan) btn.insertBefore(ico, countSpan); else btn.appendChild(ico);
+});
+
+// ---------- Init ----------
+setSelectedPiece('V');
+loadDraft();
+updateCounts();
+</script>
+</body>
+</html>

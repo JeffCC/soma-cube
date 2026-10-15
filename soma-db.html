@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Soma Cube 解答資料庫</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --panel: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e0e0e0;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --cV: #e53935; --cL: #fb8c00; --cT: #fdd835; --cZ: #43a047;
+    --cA: #1e88e5; --cB: #8e24aa; --cP: #ec407a;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+    background: var(--bg); color: var(--text); margin: 0; padding: 16px; }
+  header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+  .tab { padding: 8px 16px; background: none; border: none; cursor: pointer; font-size: 14px;
+    color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .panel { background: var(--panel); padding: 16px; border-radius: 8px;
+    border: 1px solid var(--border); margin-bottom: 12px; }
+  button.btn { padding: 8px 16px; background: var(--accent); color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 14px; }
+  button.btn:hover { background: var(--accent-hover); }
+  button.btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.btn-sec { background: #e5e7eb; color: var(--text); }
+  button.btn-sec:hover { background: #d1d5db; }
+  input[type=text] { padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 4px; font-size: 14px; }
+  /* Layer grid display */
+  .layers { display: flex; gap: 20px; justify-content: center; }
+  .layer { }
+  .layer h4 { text-align: center; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 2px; }
+  .cell { display: flex; align-items: center; justify-content: center; font-weight: 700;
+    font-size: 16px; color: white; border-radius: 4px; cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4); user-select: none; }
+  .cell.empty { background: #e5e7eb; color: #9ca3af; text-shadow: none; }
+  .cell.V { background: var(--cV); }
+  .cell.L { background: var(--cL); }
+  .cell.T { background: var(--cT); color: #333; text-shadow: none; }
+  .cell.Z { background: var(--cZ); }
+  .cell.A { background: var(--cA); }
+  .cell.B { background: var(--cB); }
+  .cell.P { background: var(--cP); }
+  /* Palette */
+  .palette { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .pbtn { width: 36px; height: 36px; border: 2px solid transparent; border-radius: 4px;
+    cursor: pointer; font-weight: 700; color: white; font-size: 16px; }
+  .pbtn.selected { border-color: #000; }
+  .pbtn.V { background: var(--cV); }
+  .pbtn.L { background: var(--cL); }
+  .pbtn.T { background: var(--cT); color: #333; }
+  .pbtn.Z { background: var(--cZ); }
+  .pbtn.A { background: var(--cA); }
+  .pbtn.B { background: var(--cB); }
+  .pbtn.P { background: var(--cP); }
+  .pbtn.erase { background: #e5e7eb; color: #333; }
+  /* List view */
+  .list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .list-item { background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px; cursor: pointer; text-align: center; }
+  .list-item:hover { border-color: var(--accent); }
+  .list-item.solved { background: #ecfdf5; border-color: #10b981; }
+  .list-item h5 { margin: 0 0 4px; font-size: 13px; }
+  .mini-cell { display: inline-block; width: 10px; height: 10px; margin: 0.5px; border-radius: 1px; }
+  .mini-cell.V { background: var(--cV); } .mini-cell.L { background: var(--cL); }
+  .mini-cell.T { background: var(--cT); } .mini-cell.Z { background: var(--cZ); }
+  .mini-cell.A { background: var(--cA); } .mini-cell.B { background: var(--cB); }
+  .mini-cell.P { background: var(--cP); }
+  .mini-grid { display: inline-block; line-height: 0; }
+  .mini-row { line-height: 0; }
+  .mini-layer { display: inline-block; margin: 0 3px; }
+  /* 3D view */
+  #view3d { width: 100%; height: 400px; background: #fafafa; border-radius: 8px; }
+  /* Status/message */
+  .msg { padding: 10px; border-radius: 4px; margin: 10px 0; }
+  .msg.ok { background: #d1fae5; color: #065f46; }
+  .msg.err { background: #fee2e2; color: #991b1b; }
+  .msg.info { background: #dbeafe; color: #1e40af; }
+  /* Records table */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th { background: #f9fafb; font-weight: 600; }
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover { background: #f9fafb; }
+  /* Detail */
+  .detail-flex { display: flex; gap: 16px; flex-wrap: wrap; }
+  .detail-flex > div { flex: 1; min-width: 300px; }
+  .text-format { font-family: ui-monospace, "Cascadia Mono", monospace; font-size: 14px;
+    background: #f3f4f6; padding: 10px; border-radius: 4px; white-space: pre; }
+  .counts { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  @media (max-width: 700px) {
+    .layers { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Soma Cube 解答資料庫</h1>
+  <span class="sub">240 組解答 · 樹狀編號 · 本機儲存</span>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-page="input">輸入解答</button>
+  <button class="tab" data-page="list">所有解答 (240)</button>
+  <button class="tab" data-page="records">我的紀錄</button>
+  <button class="tab" data-page="compare">比較兩組</button>
+  <button class="tab" data-page="help">說明</button>
+</div>
+
+<!-- Input page -->
+<div class="page active" id="page-input">
+  <div class="panel">
+    <h3 style="margin-top:0">輸入你的解答</h3>
+    <p class="sub">點選下面調色盤選一個 piece，再點格子填入。或在文字框輸入 27 個英文字母（V/L/T/Z/A/B/P）。</p>
+    <div class="layers">
+      <div class="layer"><h4>底層 (z=0)</h4><div class="grid3" id="g0"></div></div>
+      <div class="layer"><h4>中層 (z=1)</h4><div class="grid3" id="g1"></div></div>
+      <div class="layer"><h4>頂層 (z=2)</h4><div class="grid3" id="g2"></div></div>
+    </div>
+    <div class="palette" id="palette">
+      <button class="pbtn V" data-p="V">V</button>
+      <button class="pbtn L" data-p="L">L</button>
+      <button class="pbtn T" data-p="T">T</button>
+      <button class="pbtn Z" data-p="Z">Z</button>
+      <button class="pbtn A" data-p="A">A</button>
+      <button class="pbtn B" data-p="B">B</button>
+      <button class="pbtn P" data-p="P">P</button>
+      <button class="pbtn erase" data-p=".">清</button>
+    </div>
+    <div style="margin-top:12px; text-align:center;">
+      <label>文字輸入：<input type="text" id="textInput" size="35" maxlength="27"
+        placeholder="例如 VVTZVPZPPZTTZBABBPLLTLBALAA" style="font-family:monospace"></label>
+      <button class="btn btn-sec" id="btnLoadText">載入</button>
+    </div>
+    <div style="margin-top:10px; text-align:center;">
+      <button class="btn" id="btnIdentify">識別編號</button>
+      <button class="btn btn-sec" id="btnClear">全部清除</button>
+    </div>
+    <div class="counts" id="counts" style="justify-content:center; margin-top:8px"></div>
+    <div id="identMsg"></div>
+  </div>
+  <div class="panel" id="resultPanel" style="display:none">
+    <h3 style="margin-top:0" id="resultTitle"></h3>
+    <div class="detail-flex">
+      <div>
+        <h4>3D 視圖（滑鼠拖曳旋轉）</h4>
+        <div id="view3d"></div>
+      </div>
+      <div>
+        <h4>標準擺放文字格式 (3×3×3)</h4>
+        <div class="text-format" id="textFormat"></div>
+        <div style="margin-top:12px">
+          <label>發現者：<input type="text" id="solverName" placeholder="名字"></label>
+          <button class="btn btn-sec" id="btnPresetName" type="button" title="填入上次存過的名字">預存</button>
+        </div>
+        <div style="margin-top:8px">
+          <label style="display:block">備註：</label>
+          <textarea id="solverNote" rows="3" style="width:100%; max-width:420px; font:inherit; padding:6px" placeholder="解出這組解時想記下的事（可空白）"></textarea>
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn" id="btnSave">存入紀錄</button>
+        </div>
+        <div id="saveMsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- List page -->
+<div class="page" id="page-list">
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center">
+      <h3 style="margin:0">所有 240 組解答</h3>
+      <div class="sub">綠色邊框 = 我已解出</div>
+    </div>
+    <div class="list-grid" id="listGrid" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- Records page -->
+<div class="page" id="page-records">
+  <div class="panel">
+    <h3 style="margin-top:0">我的紀錄</h3>
+    <div id="storageStatus" class="msg info">讀取紀錄中…</div>
+    <div style="margin-bottom:12px">
+      <button class="btn btn-sec" id="btnExport">匯出 JSON</button>
+      <button class="btn btn-sec" id="btnImport">匯入 JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+      <button class="btn btn-sec" id="btnClearRecords" style="color:#991b1b">清除所有紀錄</button>
+    </div>
+    <table id="recordsTable">
+      <thead><tr><th>#</th><th>編號</th><th>發現者</th><th>日期時間</th><th>備註</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Compare page -->
+<div class="page" id="page-compare">
+  <div class="panel">
+    <h3 style="margin-top:0">兩組解答平行對比</h3>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px">
+      <label>左：#<input type="number" id="cmpA" min="1" max="240" value="67" style="width:60px"></label>
+      <label>右：#<input type="number" id="cmpB" min="1" max="240" value="84" style="width:60px"></label>
+      <button class="btn" id="btnCompare">比較</button>
+      <span class="sub" id="cmpDiffCount"></span>
+      <span class="sub">（雙邊視角自動同步旋轉）</span>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px">
+      <div>
+        <h4 style="margin:0 0 8px" id="cmpTitleA">#67</h4>
+        <div id="cmpView3dA" style="width:100%; height:360px; background:#fafafa; border-radius:6px; border:1px solid var(--border)"></div>
+        <div class="text-format" id="cmpTextA" style="margin-top:8px"></div>
+      </div>
+      <div>
+        <h4 style="margin:0 0 8px" id="cmpTitleB">#84</h4>
+        <div id="cmpView3dB" style="width:100%; height:360px; background:#fafafa; border-radius:6px; border:1px solid var(--border)"></div>
+        <div class="text-format" id="cmpTextB" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:8px">同格相同顏色：原色正常顯示；同格不同顏色：以反白粗體 (★) 標示；滑鼠在任一邊 3D 視圖拖曳可旋轉（視角同步時雙邊同時轉）。</p>
+  </div>
+</div>
+
+<!-- Help page -->
+<div class="page" id="page-help">
+  <div class="panel">
+    <h3 style="margin-top:0">說明</h3>
+    <h4>七個 Soma Piece</h4>
+    <ul>
+      <li><b style="color:var(--cV)">V</b> — 3 方塊 L 形 (tricube)</li>
+      <li><b style="color:var(--cL)">L</b> — 4 方塊 L 形</li>
+      <li><b style="color:var(--cT)">T</b> — 4 方塊 T 形</li>
+      <li><b style="color:var(--cZ)">Z</b> — 4 方塊 S/Z 形</li>
+      <li><b style="color:var(--cA)">A</b> — 4 方塊 左手螺旋 (chiral)</li>
+      <li><b style="color:var(--cB)">B</b> — 4 方塊 右手螺旋 (A 的鏡像)</li>
+      <li><b style="color:var(--cP)">P</b> — 4 方塊 三角架 (branch/tripod)</li>
+    </ul>
+    <h4>座標系</h4>
+    <ul>
+      <li>x: 0=左, 2=右</li>
+      <li>y: 0=上 (後方), 2=下 (前方) — 這是你從上面看每一層的視角</li>
+      <li>z: 0=底層, 2=頂層</li>
+      <li>格子索引 = z×9 + y×3 + x，從 0 (左上角底層) 到 26 (右下角頂層)</li>
+    </ul>
+    <h4>編號規則</h4>
+    <ul>
+      <li>共 240 組不重覆解答 (把 24 旋轉 + 鏡射且 A↔B 互換 視為同一組)</li>
+      <li><b>標準擺放方向</b>：採用字母優先順序 V&lt;L&lt;T&lt;Z&lt;A&lt;B&lt;P 的 lex-min 當 canonical</li>
+      <li>第 1 層分組：按位置 0 (0,0,0) 的 piece 分組，頻率高者排前；平手由上述字母順序決定</li>
+      <li>第 2 層：同組內看位置 1 (1,0,0)，同樣規則</li>
+      <li>依此遞迴到唯一</li>
+      <li>結果：編號 1~207 都是 V 在 (0,0,0)，208~240 是 L 在 (0,0,0)</li>
+    </ul>
+    <h4>資料儲存</h4>
+    <p>紀錄存在本頁資料夾的 <code>soma-records.json</code>（需用 start-server.bat 開啟），放在 Dropbox 裡就會同步到其他電腦。每次寫入前會把上一版留在 <code>soma-records.bak.json</code>。</p>
+  </div>
+</div>
+
+<script>
+const SOLUTIONS = [
+"VVTZVPZPPZTTZBABBPLLTLBALAA",
+"VVTZVPZPPZTTZBBAAPLLTLABLAB",
+"VVTZVPZPPZBTZATLAPLBTLBBLAA",
+"VVTZVPBPPZTTZBABBPZATLAALLL",
+"VVTZVPBPPZATZBTBBPZATAALLLL",
+"VVTZVPLPPZBTZATLAPZBTLBBLAA",
+"VVTZVALAAZTTZBBLAPZBTLBPLPP",
+"VVTZVALAAZTTZPBLABZPTLPPLBB",
+"VVTZVALLAPTTZAAZLBPPTPBBZLB",
+"VVTZVAZAAZTTZBBLAPLBTLBPLPP",
+"VVTZVAZAAZTTZPBLABLPTLPPLBB",
+"VVTZVLLLLZTTZBAPBBZATPAAPPB",
+"VVTZVLLLLZTTZBBPAAZBTPBAPPA",
+"VVTZVLAALZBTZATPALZBTPBBPPL",
+"VVTZVLAALPTTZABZALPPTPBBZBL",
+"VVTZVTZPTZBAZPTLPPBBABAALLL",
+"VVTZVTZPTZBAZPTPPLBBABAALLL",
+"VVTZVTZPTZBBZPTPPALLBLABLAA",
+"VVTZVTLLTPAAZATZLBPPAPBBZLB",
+"VVTZVBLLBZTTZPALBBZPTPPALAA",
+"VVTZVBLLBPTTZZALBBPPTPZALAA",
+"VVTZVBLBBZTTZPBLAAZPTPPALLA",
+"VVTZVBLBBPTTZZBLAAPPTPZALLA",
+"VVTZAALLAPVTZZTLBAPPTPZBLBB",
+"VVTZABAABPVTZZTABBPPTPZLLLL",
+"VVTZTTLLTBVPZAAZLABPPBBPZLA",
+"VVTZBLBBLPVTZBTZALPPTPAAZAL",
+"VVTLVALAABTTBZZLAPBBTZZPLPP",
+"VVTLVALAABTTBPPLAPBBTZZPLZZ",
+"VVTLVALAAPTTZZBLABPPTPZZLBB",
+"VVTLVALAAPTTPPBLABZZTPZZLBB",
+"VVTLVTLZTBBPLBTZZABPPLAPZAA",
+"VVTLVTLZTBBPABTLZZBPPAAPLAZ",
+"VVTLVTLZTAAPBBTLZZAPPABPLBZ",
+"VVTLVZLLLPTTABZABZPPTPBBAAZ",
+"VVTLVZLLLPTTBBZBAZPPTPAABAZ",
+"VVTLVZLLLBTTBZZPAABBTPZAPPA",
+"VVTLVPLPPBTTBAALAPBBTZZALZZ",
+"VVTLVPLPPBBTBATLAPZZTBZZLAA",
+"VVTLVPZPPATTLBBZZPAATLABLZB",
+"VVTLZZLLLAVTZZTBBPAATBAPBPP",
+"VVTLZZLLLPVTZZTBAAPPTPBABBA",
+"VVTLZPLPPAVTZZTLBPAATZABLBB",
+"VVTLLLZZLBVTBATPZZBBTPAAPPA",
+"VVTLLLBBLPVTBATBZZPPTPAAZZA",
+"VVTLTTLZTAVBLBBZZPAABLAPZPP",
+"VVTLTTLBTAVPAABLBBAPPZZPLZZ",
+"VVTLBBLZBAVTLBTZZPAATLAPZPP",
+"VVTBVTBBTAZZZZTPBLAALPALPPL",
+"VVTBVTBBTAAPZATZBLZPPZAPLLL",
+"VVTBVTBBTPZAZZTZBLPPAPAALLL",
+"VVTBVTBBTPPAZPTZBLZPAZAALLL",
+"VVTBVTZZTABLBBTPZZAALPALPPL",
+"VVTBVTZZTPBABBTLZZPPAPAALLL",
+"VVTBVTLZTPBABBTLZZPPAPAALLZ",
+"VVTBVLBZLATTBBLPZZAATPALPPZ",
+"VVTBVLBZLPTTBBLZZAPPTPALZAA",
+"VVTBVLLLLPTTBAABBAPPTPZZZZA",
+"VVTBVZBBLPTTAZZABLPPTPZLAAL",
+"VVTBAABBAPVTZZTLBAPPTPZZLLL",
+"VVTBAABBAPVTPPTLBAZZTPZZLLL",
+"VVTBBABAAPVTZZTBALPPTPZZLLL",
+"VVTBBABAAPVTPPTBALZZTPZZLLL",
+"VVTBZZZZLPVTBATBBLPPTPALAAL",
+"VVTAVTZZTAALABTPZZBBLPBLPPL",
+"VVTAVTZZTAAPABTLZZLPPLBPLBB",
+"VVTAVTLLTAAPABTLBBZPPZZPLZB",
+"VVTAVTAATBBPABTLLLBPPZZPLZZ",
+"VVTAVPBPPAATABTBBPLZTLZZLLZ",
+"VVTAVPBPPAATABTBBPZZTLZZLLL",
+"VVTAVPAPPBTTBZZAAPBBTZZLLLL",
+"VVTAVBABBPTTZZBAALPPTPZZLLL",
+"VVTAVBABBPTTPPBAALZZTPZZLLL",
+"VVTAVLLLLAATABTPBBZZTPZZPPB",
+"VVTATTAATPVZAZZBZLPPLPBLBBL",
+"VVTATTAATPVBABBLLLPPBPZZZZL",
+"VVTAZZZZLPVTAATBALPPTPBLBBL",
+"VVTAALLLLPVTABTABBPPTPZZZZB",
+"VVTABBAABPVTABTLLLPPTPZZZZL",
+"VVTPVTLZTPBAPPTLZZBBABAALLZ",
+"VVTPVTZZTPBAPPTLZZBBABAALLL",
+"VVTPVALAAPTTPPBLABZZTLZZLBB",
+"VVLZVLTTTZALZAAPTBZALPBBPPB",
+"VVLZVLTTTZBLZAAPTAZBLPBBPPA",
+"VVLZVLTTTAALZBBZTPABLABPZPP",
+"VVLZVLTTTAALZPBZTBAPLAPPZBB",
+"VVLZVLTTTPALZABZTBPPLPAAZBB",
+"VVLZVLTTTPBLZBBZTAPPLPABZAA",
+"VVLZVLTTTBALZAAZTPBALBBPZPP",
+"VVLZVLTLLZABZBBTTPZABAAPTPP",
+"VVLZVLTLLZBAZBATTPZAABBPTPP",
+"VVLZVLTLLAAPZZBTTBAPPAZPTBB",
+"VVLZVLZLLZTAZAABBPTTTBAPBPP",
+"VVLZVLZLLZTPZPPBBATTTBAPBAA",
+"VVLZVLZLLZAAZBAPBBTTTPTAPPB",
+"VVLZVLZBLZTLZABPBBTTTPAAPPA",
+"VVLZVLZBLZALZABPBBAATPTTPPT",
+"VVLZVLZALZTLZAAPABTTTPBBPPB",
+"VVLZVLZPLZALZPBPPBTAATTATBB",
+"VVLZVLAALZBBZABPALZBTPTTPPT",
+"VVLZVLAATZBLZATPATZBLPBBPPT",
+"VVLZVATTTZALZAAPTBZLLPBBPPB",
+"VVLZVATTTBALZAAZTPBLLBBPZPP",
+"VVLZVBTBBAALZZBTTPALLAZPTPP",
+"VVLZVPTPPZBLZBATTPZLLBBATAA",
+"VVLZZLTTTBVLBZZATPBBLAAPAPP",
+"VVLZZLTTTPVLAZZATBPPLPBBAAB",
+"VVLZZLAZZPVLAABABBPPLPTBTTT",
+"VVLZZLBBLPVABZZBTLPPAPAATTT",
+"VVLZZATZZPVLTBATAAPPLPBLTBB",
+"VVLZZATAABVLTZZTAPBLLBBPTPP",
+"VVLZZBTZZPVLTBBTBAPPLPALTAA",
+"VVLZBLBBLPVLZBAZAAPPTPTTZAT",
+"VVLZBLBBTPVLZBTZATPPLPAAZAT",
+"VVLZBLTBBPVLZZATTBPPLPZATAA",
+"VVLZTATTTPVLZBAZAAPPLPBLZBB",
+"VVLZTBTTTPVLZBBZBAPPLPALZAA",
+"VVLAVLZZLAALABTPZZBBTPBTPPT",
+"VVLAVLZZLAALABBPZZTTTPTBPPB",
+"VVLAVLAALPBBAZZZZLPPBPTBTTT",
+"VVLAVPTPPAALABBTTPZLLZZBTZB",
+"VVLAVPZPPAALABBZZPTLLTTBTZB",
+"VVLAVZTTTAALABZPTZBBLPBLPPZ",
+"VVLAZLAATPVLAZZBTTPPLPBZBBT",
+"VVLAZZZZTPVLAATBATPPLPBLBBT",
+"VVLAALTALPVLTBZTAZPPZPBZTBB",
+"VVLAALTAZPVLTBZTAZPPLPBZTBB",
+"VVLATZTTTPVLAAZBAZPPLPBLBBZ",
+"VVLBVLBBLAZZZZTPBLAATPATPPT",
+"VVLBVLBBLPZLAZZABZPPTPTTAAT",
+"VVLBVLZZLABLBBTPZZAATPATPPT",
+"VVLBVZTTTABLBBZPTZAALPALPPZ",
+"VVLBBLBAAPVLZZABTAPPLPZZTTT",
+"VVLBBLBAAPVLPPABTAZZLPZZTTT",
+"VVLBBLTBLPVLBAATTAPPZPZZTZA",
+"VVLBTLTTTPVLBAABBAPPLPZZZZA",
+"VVLBTZTTTPVLBAZBBZPPLPALAAZ",
+"VVLBZZZZTPVLBATBBTPPLPALAAT",
+"VVAZVALLTZAAZPBLTTZBBPPBLPT",
+"VVAZVALLTPAAZBTZLTPPBPBBZLT",
+"VVAZVALLLPAAZBBZBLPPTPTTZBT",
+"VVAZVALLBPAAZBBZLBPPTPTTZLT",
+"VVAZVATTTZAAZBBPTLZBLPBLPPL",
+"VVAZVATTTZAAZBBPTBZLLPBLPPL",
+"VVAZVATTTPAAZBBZTBPPLPBLZLL",
+"VVAZVATLLZAAZPBTTLZBBPPBTPL",
+"VVAZVAZLLZAAZPBPPLTBBTTBTPL",
+"VVAZVAZPLZAAZPBPPLTBBTTBTLL",
+"VVAZAALLTZVPZATLBTZPPBBPLBT",
+"VVAZAALLTBVPZATZLTBPPBBPZLT",
+"VVAZBBZBLZVAZAAPBLTTTPTLPPL",
+"VVAPVAPPZBAABBTPZZLLTLBTLZT",
+"VVAPVAPPZBAABBZPTZLLLLBZTTT",
+"VVAPVAPPZLAABBZPBZLLLBTZTTT",
+"VVAPVAPPLZAAZZBPZLTBBTTBTLL",
+"VVAPVAPPLZAAZBBPBLTTTZTLZBL",
+"VVAPVAPPTLAABBTPBTLLLBZZZZT",
+"VVAPVALLLPAAPPBZZLTBBTTBTZZ",
+"VVAPVALLTPAAPPBLTTZBBZZBLZT",
+"VVAPVATLLPAAPPBTTLZBBZZBTZL",
+"VVAPVAZLLPAAPPBZZLTBBTTBTZL",
+"VVAPAAPPLZVLZALPBLTTTZTBZBB",
+"VVAPAAPPTZVLZABPTTLLLZBBZBT",
+"VVABVABBTLAAZZTPBTLLLPZZPPT",
+"VVABVABBTLAAPPTPBTLLLPZZZZT",
+"VVABVABBZLAAPPZPBZLLLPTZTTT",
+"VVABVABBZPAAPPZLBZTTTPTZLLL",
+"VVABVLLLLZZABAABBPTZZTTPTPP",
+"VVABBPTPPBVABAATTPLLLZZLTZZ",
+"VVABBPTPPBVABAATTPZLLZZLTZL",
+"VVABBPZPPBVABAAZZPLLTLTTLZT",
+"VVABBPZPPBVABAAZZPTLLTTLTZL",
+"VVABBLTBLPVABAATTLPPZPZZTZL",
+"VVABAABBTLVPLATLBTZPPZZPLZT",
+"VVALVALLLPAAZZTBZZPPTPBTBBT",
+"VVALVALBTPAABBTLBTPPZPZZLZT",
+"VVALLLZZLBVABAAPZZBBTPTTPPT",
+"VVALLLBBLPVABAABZZPPTPTTZZT",
+"VVZAVPAPPBTZBBZAAPTTTLBZLLL",
+"VVZAVPAPPBZZBBTAAPLZTLBTLLT",
+"VVZAVPBPPAAZABZBBPLLLLTZTTT",
+"VVZAVPBPPAAZABZBBPTTTLTZLLL",
+"VVZAVPLPPBZZAATLAPBZTBBTLLT",
+"VVZAVPTPPAAZABZTTPLLLLBZTBB",
+"VVZAVZTTTAALABZPTZBBLPBLPPL",
+"VVZAVZTTTAAPABZLTZLPPLBPLBB",
+"VVZAVZLLLPBBAAZLAZPPBPTBTTT",
+"VVZAVLLLLAAZABZPBBTTTPTZPPB",
+"VVZATZTTTPVLAAZBAZPPLPBLBBL",
+"VVZLVZLLLABBPPZPTZAABPABTTT",
+"VVZLVZLLLBBPABZAAZBPPATPTTT",
+"VVZLVZLLLPBBAAZATZPPBPABTTT",
+"VVZLVPLPPBZZAATLAPBZTBBTLAT",
+"VVZLVPLPPBBZBAZLAPTTTBTZLAA",
+"VVZLVPLPPAZZAATLBPAZTBBTLBT",
+"VVZLZZLZTAVPAATLBTAPPBBPLBT",
+"VVZLZZLZTBVPAATLATBPPBBPLAT",
+"VVZLBZLLLPVABBZBTZPPAPAATTT",
+"VVZBVZTTTABLBBZPTZAALPALPPL",
+"VVZBVZTTTPBABBZLTZPPAPAALLL",
+"VVZBVZLLLPBABBZLTZPPAPAATTT",
+"VVZBTZTTTPVLBAZBBZPPLPALAAL",
+"VVZBAABBAPVZPPZLBATTTPTZLLL",
+"VVZBBABAAPVZPPZBALTTTPTZLLL",
+"VVZPVZLLLPBAPPZLTZBBABAATTT",
+"VVZPVZTTTPBAPPZLTZBBABAALLL",
+"VVZPVLLLLPTZPPZBBATTTBAZBAA",
+"LLLLZZZZTAAPVVTBVTAPPABPBBT",
+"LLLLZZZZTAAPBBTBVTAPPAVPBVT",
+"LLLLZZZZTABBVVTPVTAABPABPPT",
+"LLLLZZZZTBVABVVPTTBBAPAAPPT",
+"LLLLZZZZTBVPAVVATTBPPBBPAAT",
+"LLLLZZZZTBAABAVPTTBBAPVVPPT",
+"LLLLZZZZTPBBAVVATTPPBPVBAAT",
+"LLLLZZZZTPBBAVTAVTPPBPVBAAT",
+"LLLLZZZZTPBBVATVVTPPBPABAAT",
+"LLLLZZZZBAAPVBBVVBAPPATPTTT",
+"LLLLTZTTTAVZVVZBBPAAZBAPBPP",
+"LLLLTZTTTAVZAAZBBPAVZBVPBPP",
+"LLLLTZTTTAAPVVZBVZAPPABPBBZ",
+"LLLLTZTTTAAPBBZBVZAPPAVPBVZ",
+"LLLLTZTTTABBVVZPVZAABPABPPZ",
+"LLLLTZTTTPBBVAZVVZPPBPABAAZ",
+"LLLLTZTTTPBBAVZAVZPPBPVBAAZ",
+"LLLLTZTTTPVZVVZBAAPPZPBABBA",
+"LLLLTZTTTBVZBVZPAABBZPVAPPA",
+"LLLLVZTTTBVZBVZATPBBZAAPAPP",
+"LLLLVZTTTBVABVZPTZBBAPAAPPZ",
+"LLLLVZTTTBVPAVZATZBPPBBPAAZ",
+"LLLLVZTTTAAPVVZBTZAPPABPBBZ",
+"LLLLVZTTTABBVVZPTZAABPABPPZ",
+"LLLLVZTTTPVZAVZATBPPZPBBAAB",
+"LLLLVPZPPABBZVVZTPAABZABTTT",
+"LLLLAZTAAPBBTAZTVZPPBPVBTVZ",
+"LVTLVTLZTLVPBBTZZABPPBAPZAA",
+"LVTLVALAAZVTZBTLAPBBTZBPZPP",
+"LVTLVBLLBAVTAATPBBAZTPZZPPZ",
+"LVTLVPLPPAVTAATLBPAZTZZBZBB",
+"LVALVPLPPZVAZAALBPTTTZTBZBB",
+"LVALVPTPPLVATAATBPLZZZZBTBB"
+];
+
+
+const LETTER_ORDER = "VLTZABP";
+const LETTER_RANK = {V:0, L:1, T:2, Z:3, A:4, B:5, P:6};
+const PIECES = ["V","L","T","Z","A","B","P"];
+
+// ---------- 24 rotations ----------
+function matMul(A, B) {
+  const r = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++) for (let k=0;k<3;k++)
+    r[i][j] += A[i][k]*B[k][j];
+  return r;
+}
+function matEq(A,B){ for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(A[i][j]!==B[i][j]) return false; return true; }
+function matKey(M){ return M.flat().join(','); }
+const I = [[1,0,0],[0,1,0],[0,0,1]];
+const Rx = [[1,0,0],[0,0,-1],[0,1,0]];
+const Ry = [[0,0,1],[0,1,0],[-1,0,0]];
+const Rz = [[0,-1,0],[1,0,0],[0,0,1]];
+const ROTS = (() => {
+  const seen = {}; const out = []; const stack = [I];
+  seen[matKey(I)] = true;
+  while (stack.length) {
+    const M = stack.pop(); out.push(M);
+    for (const R of [Rx, Ry, Rz]) {
+      const N = matMul(R, M); const k = matKey(N);
+      if (!seen[k]) { seen[k] = true; stack.push(N); }
+    }
+  }
+  return out;
+})();
+
+// ---------- Rotate/mirror a 27-char solution ----------
+function rotateStr(s, M) {
+  const rotated = new Array(27);
+  for (let i=0;i<27;i++) {
+    const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+    const nx = M[0][0]*x + M[0][1]*y + M[0][2]*z;
+    const ny = M[1][0]*x + M[1][1]*y + M[1][2]*z;
+    const nz = M[2][0]*x + M[2][1]*y + M[2][2]*z;
+    rotated[i] = [nx, ny, nz];
+  }
+  let minx=99, miny=99, minz=99;
+  for (const p of rotated) { if(p[0]<minx)minx=p[0]; if(p[1]<miny)miny=p[1]; if(p[2]<minz)minz=p[2]; }
+  const out = new Array(27);
+  for (let i=0;i<27;i++) {
+    const [nx,ny,nz] = rotated[i];
+    const tx = nx-minx, ty = ny-miny, tz = nz-minz;
+    out[tz*9 + ty*3 + tx] = s[i];
+  }
+  return out.join('');
+}
+function mirrorStr(s) {
+  const rotated = new Array(27);
+  for (let i=0;i<27;i++) {
+    const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+    rotated[i] = [-x, y, z];
+  }
+  let minx=99, miny=99, minz=99;
+  for (const p of rotated) { if(p[0]<minx)minx=p[0]; if(p[1]<miny)miny=p[1]; if(p[2]<minz)minz=p[2]; }
+  const swap = {A:'B', B:'A'};
+  const out = new Array(27);
+  for (let i=0;i<27;i++) {
+    const [nx,ny,nz] = rotated[i];
+    const tx = nx-minx, ty = ny-miny, tz = nz-minz;
+    const p = s[i]; out[tz*9 + ty*3 + tx] = swap[p] || p;
+  }
+  return out.join('');
+}
+function rankKey(s) {
+  // compare using LETTER_ORDER rank (V=0 is smallest). pad with char.
+  const arr = new Array(s.length);
+  for (let i=0;i<s.length;i++) arr[i] = LETTER_RANK[s[i]];
+  return arr.join(',');
+}
+function canonical(s) {
+  let bestKey = null, bestStr = null;
+  for (const base of [s, mirrorStr(s)]) {
+    for (const M of ROTS) {
+      const r = rotateStr(base, M);
+      const k = rankKey(r);
+      if (bestKey === null || k < bestKey) { bestKey = k; bestStr = r; }
+    }
+  }
+  return bestStr;
+}
+
+// Pre-compute canonical -> number
+const CANON_MAP = {};
+SOLUTIONS.forEach((s, i) => { CANON_MAP[s] = i + 1; });
+
+// ---------- UI state ----------
+let currentGrid = new Array(27).fill('.');  // input grid
+let selectedPiece = 'V';
+let currentIdentified = null;  // {num, canonical}
+// 紀錄主要存在資料夾裡的 soma-records.json（透過 server.py），localStorage 只當備援
+let records = (() => { try { return JSON.parse(localStorage.getItem('somaRecords') || '[]'); } catch(e) { return []; } })();
+let fileMode = false;  // true = 已連上 server.py，紀錄寫入 soma-records.json
+
+function recKey(r) { return `${r.num}|${r.solver}|${r.datetime}`; }
+function cacheLocal() { try { localStorage.setItem('somaRecords', JSON.stringify(records)); } catch(e) {} }
+function setStorageStatus(cls, html) {
+  const el = document.getElementById('storageStatus');
+  if (el) { el.className = 'msg ' + cls; el.innerHTML = html; }
+}
+function saveRecords() {
+  cacheLocal();
+  if (!fileMode) return;
+  fetch('api/records', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(records) })
+    .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || r.status); }))
+    .then(() => setStorageStatus('ok', `✔ 已存到 <b>soma-records.json</b>（共 ${records.length} 筆，Dropbox 會同步到其他電腦）`))
+    .catch(e => setStorageStatus('err', `⚠ 寫入 soma-records.json 失敗：${escapeHTML(String(e.message || e))}。這次的變更暫存在瀏覽器裡。`));
+}
+async function loadRecordsFromFile() {
+  try {
+    const r = await fetch('api/records', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    fileMode = true;
+    let fileRecs = Array.isArray(j.records) ? j.records : [];
+    // 第一次在這台瀏覽器連上檔案時，把以前存在瀏覽器裡的紀錄併進檔案
+    let migrated = false;
+    try { migrated = localStorage.getItem('somaMigratedToFile') === '1'; } catch(e) {}
+    if (!migrated) {
+      const have = new Set(fileRecs.map(recKey));
+      const extra = records.filter(x => !have.has(recKey(x)));
+      try { localStorage.setItem('somaMigratedToFile', '1'); } catch(e) {}
+      if (extra.length || !j.exists) {
+        records = fileRecs.concat(extra)
+          .sort((a, b) => String(a.datetime).localeCompare(String(b.datetime)));
+        saveRecords();
+        refreshRecordViews();
+        return;
+      }
+    }
+    records = fileRecs;
+    cacheLocal();
+    setStorageStatus('ok', `✔ 紀錄存在 <b>soma-records.json</b>（共 ${records.length} 筆，Dropbox 會同步到其他電腦）`);
+  } catch (e) {
+    fileMode = false;
+    setStorageStatus('err', '⚠ 沒有連上本地伺服器，紀錄只存在這個瀏覽器裡。請用 <b>start-server.bat</b> 開啟本頁。');
+  }
+  refreshRecordViews();
+}
+function refreshRecordViews() {
+  renderRecords(); renderList();
+  if (typeof updatePresetBtn === 'function') updatePresetBtn();
+}
+// 切回這個分頁時重新讀檔，拿到另一台電腦同步過來的紀錄
+document.addEventListener('visibilitychange', () => { if (!document.hidden && fileMode) loadRecordsFromFile(); });
+
+// ---------- Input grid rendering ----------
+function renderInputGrids() {
+  for (let z = 0; z < 3; z++) {
+    const g = document.getElementById('g' + z);
+    g.innerHTML = '';
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        const idx = z*9 + y*3 + x;
+        const letter = currentGrid[idx];
+        const cell = document.createElement('div');
+        cell.className = 'cell ' + (letter === '.' ? 'empty' : letter);
+        cell.textContent = letter === '.' ? '' : letter;
+        cell.dataset.idx = idx;
+        cell.onclick = () => {
+          currentGrid[idx] = selectedPiece;
+          renderInputGrids();
+          updateCounts();
+        };
+        g.appendChild(cell);
+      }
+    }
+  }
+}
+function updateCounts() {
+  const c = {V:0,L:0,T:0,Z:0,A:0,B:0,P:0};
+  for (const ch of currentGrid) if (ch !== '.') c[ch]++;
+  const target = {V:3,L:4,T:4,Z:4,A:4,B:4,P:4};
+  const parts = PIECES.map(p => {
+    const ok = c[p] === target[p];
+    return `<span style="color:${ok?'#047857':'#991b1b'}">${p}:${c[p]}/${target[p]}</span>`;
+  });
+  document.getElementById('counts').innerHTML = parts.join(' · ');
+}
+
+// ---------- Palette ----------
+document.querySelectorAll('.pbtn').forEach(btn => {
+  if (btn.dataset.p === 'V') btn.classList.add('selected');
+  btn.onclick = () => {
+    selectedPiece = btn.dataset.p;
+    document.querySelectorAll('.pbtn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  };
+});
+document.getElementById('btnClear').onclick = () => {
+  currentGrid = new Array(27).fill('.');
+  renderInputGrids(); updateCounts();
+  document.getElementById('identMsg').innerHTML = '';
+  document.getElementById('resultPanel').style.display = 'none';
+  currentIdentified = null;
+};
+document.getElementById('btnLoadText').onclick = () => {
+  const t = document.getElementById('textInput').value.toUpperCase().replace(/[^VLTZABP.]/g,'');
+  if (t.length !== 27) {
+    showMsg('identMsg','err','文字長度應為 27 個字元，目前 ' + t.length);
+    return;
+  }
+  currentGrid = t.split('');
+  renderInputGrids(); updateCounts();
+  showMsg('identMsg','ok','已載入');
+};
+function showMsg(id, cls, html) {
+  document.getElementById(id).innerHTML = `<div class="msg ${cls}">${html}</div>`;
+}
+
+// ---------- Identify ----------
+document.getElementById('btnIdentify').onclick = () => {
+  // Validate counts
+  const c = {V:0,L:0,T:0,Z:0,A:0,B:0,P:0};
+  for (const ch of currentGrid) if (ch !== '.') c[ch]++;
+  const target = {V:3,L:4,T:4,Z:4,A:4,B:4,P:4};
+  const errs = PIECES.filter(p => c[p] !== target[p]);
+  if (errs.length) {
+    showMsg('identMsg','err', '方塊數不正確：' + errs.map(p=>`${p} 應該有 ${target[p]} 個`).join('、'));
+    return;
+  }
+  if (currentGrid.includes('.')) {
+    showMsg('identMsg','err','還有空格未填');
+    return;
+  }
+  const s = currentGrid.join('');
+  const cForm = canonical(s);
+  const num = CANON_MAP[cForm];
+  if (!num) {
+    showMsg('identMsg','err','這不是合法的 Soma Cube 解答（方塊必須構成七個指定形狀）');
+    return;
+  }
+  currentIdentified = {num, canonical: cForm};
+  showMsg('identMsg','ok',`識別成功！這是編號 <b>#${num}</b>`);
+  showResult(num, cForm);
+};
+
+function showResult(num, cForm) {
+  document.getElementById('resultPanel').style.display = 'block';
+  document.getElementById('resultTitle').textContent = `編號 #${num}`;
+  document.getElementById('textFormat').textContent = formatSolutionText(cForm);
+  render3D(cForm);
+  document.getElementById('saveMsg').innerHTML = '';
+}
+
+function formatSolutionText(s) {
+  const layers = ['底層 (z=0)','中層 (z=1)','頂層 (z=2)'];
+  let out = '';
+  for (let z = 0; z < 3; z++) {
+    out += layers[z] + '\n';
+    for (let y = 0; y < 3; y++) {
+      let row = '';
+      for (let x = 0; x < 3; x++) row += s[z*9 + y*3 + x] + ' ';
+      out += '  ' + row.trim() + '\n';
+    }
+    if (z < 2) out += '\n';
+  }
+  return out;
+}
+
+// ---------- Save record ----------
+document.getElementById('btnSave').onclick = () => {
+  if (!currentIdentified) return;
+  const name = document.getElementById('solverName').value.trim();
+  if (!name) {
+    showMsg('saveMsg','err','請輸入發現者名字');
+    return;
+  }
+  const now = new Date();
+  const note = document.getElementById('solverNote').value.trim();
+  const rec = {
+    num: currentIdentified.num,
+    canonical: currentIdentified.canonical,
+    solver: name,
+    datetime: now.toISOString(),
+    note: note,
+  };
+  try { localStorage.setItem('somaPresetName', name); } catch(e) {}
+  updatePresetBtn();
+  document.getElementById('solverNote').value = '';
+  records.push(rec);
+  saveRecords();
+  showMsg('saveMsg','ok',`已存入紀錄：發現者=${name}，編號 #${rec.num}，時間 ${formatDate(now)}`);
+  renderRecords();
+  renderList();
+};
+
+function formatDate(d) {
+  const z = n => String(n).padStart(2,'0');
+  const wd = '日一二三四五六'[d.getDay()];
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const oh = Math.floor(Math.abs(off) / 60), om = Math.abs(off) % 60;
+  const tz = `GMT${sign}${oh}${om ? ':' + z(om) : ''}`;
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}（${wd}） ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())} ${tz}`;
+}
+
+// ---------- Preset solver name ----------
+function getPresetName() {
+  let n = '';
+  try { n = localStorage.getItem('somaPresetName') || ''; } catch(e) {}
+  return n || (records.length ? records[records.length-1].solver : '');
+}
+function updatePresetBtn() {
+  const b = document.getElementById('btnPresetName');
+  const n = getPresetName();
+  b.textContent = n ? `預存：${n}` : '預存';
+  b.disabled = !n;
+  b.title = n ? `點一下填入「${n}」` : '還沒有存過名字，存入一筆紀錄後就會記住';
+}
+document.getElementById('btnPresetName').onclick = () => {
+  const n = getPresetName();
+  if (n) document.getElementById('solverName').value = n;
+};
+(function initPreset() {
+  if (!getPresetName() && records.length) {
+    try { localStorage.setItem('somaPresetName', records[records.length-1].solver); } catch(e) {}
+  }
+  updatePresetBtn();
+})();
+
+// ---------- Records page ----------
+function renderRecords() {
+  const tbody = document.querySelector('#recordsTable tbody');
+  tbody.innerHTML = '';
+  records.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'row-link';
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>#${r.num}</td>
+      <td>${escapeHTML(r.solver)}</td>
+      <td style="white-space:nowrap">${formatDate(new Date(r.datetime))}</td>
+      <td style="white-space:pre-wrap; max-width:280px">${escapeHTML(r.note || '')}</td>
+      <td><button class="btn btn-sec" data-i="${i}">刪除</button></td>`;
+    tr.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('刪除這筆紀錄？')) {
+        records.splice(i, 1); saveRecords(); renderRecords(); renderList();
+      }
+    };
+    tr.onclick = () => {
+      switchTab('input');
+      currentGrid = r.canonical.split('');
+      renderInputGrids(); updateCounts();
+      currentIdentified = {num: r.num, canonical: r.canonical};
+      showResult(r.num, r.canonical);
+    };
+    tbody.appendChild(tr);
+  });
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted); text-align:center">目前沒有紀錄</td></tr>';
+  }
+}
+function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+document.getElementById('btnClearRecords').onclick = () => {
+  if (confirm('確定清除全部紀錄？不可復原')) {
+    records = []; saveRecords(); renderRecords(); renderList();
+  }
+};
+document.getElementById('btnExport').onclick = () => {
+  const data = JSON.stringify(records, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `soma-records-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('btnImport').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('不是陣列');
+      const merged = records.concat(imported);
+      // dedup by (num, solver, datetime)
+      const seen = new Set();
+      records = merged.filter(r => {
+        const k = `${r.num}|${r.solver}|${r.datetime}`;
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+      saveRecords(); renderRecords(); renderList();
+      alert(`匯入完成，目前共 ${records.length} 筆`);
+    } catch (err) {
+      alert('匯入失敗：' + err.message);
+    }
+  };
+  reader.readAsText(f);
+};
+
+// ---------- List page ----------
+function renderList() {
+  const grid = document.getElementById('listGrid');
+  grid.innerHTML = '';
+  const solvedNums = new Set(records.map(r => r.num));
+  for (let i = 0; i < 240; i++) {
+    const num = i + 1;
+    const s = SOLUTIONS[i];
+    const div = document.createElement('div');
+    div.className = 'list-item' + (solvedNums.has(num) ? ' solved' : '');
+    div.innerHTML = `<h5>#${num}</h5>` + miniLayers(s);
+    div.onclick = () => {
+      switchTab('input');
+      currentGrid = s.split('');
+      renderInputGrids(); updateCounts();
+      currentIdentified = {num, canonical: s};
+      showResult(num, s);
+    };
+    grid.appendChild(div);
+  }
+}
+function miniLayers(s) {
+  let html = '<div class="mini-grid">';
+  for (let z = 0; z < 3; z++) {
+    html += '<div class="mini-layer">';
+    for (let y = 0; y < 3; y++) {
+      html += '<div class="mini-row">';
+      for (let x = 0; x < 3; x++) {
+        html += `<span class="mini-cell ${s[z*9+y*3+x]}"></span>`;
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+// ---------- 3D view (simple canvas-based) ----------
+let r3d = { canvas: null, ctx: null, rotX: -0.4, rotY: 0.6, dragging: false };
+function render3D(s) {
+  const container = document.getElementById('view3d');
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = container.clientWidth || 400;
+  canvas.height = 400;
+  canvas.style.cursor = 'grab';
+  container.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  r3d.canvas = canvas; r3d.ctx = ctx; r3d.sol = s;
+  r3d.rotX = -0.4; r3d.rotY = 0.6;
+  const w = canvas.width, h = canvas.height;
+  const colors = {V:'#e53935', L:'#fb8c00', T:'#fdd835', Z:'#43a047', A:'#1e88e5', B:'#8e24aa', P:'#ec407a'};
+
+  function draw() {
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2;
+    const scale = Math.min(w, h) / 7;
+    // Build list of cubes with their 3D center
+    const cubes = [];
+    for (let i = 0; i < 27; i++) {
+      const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+      cubes.push({ cx: x - 1, cy: y - 1, cz: z - 1, piece: s[i] });
+    }
+    // Rotate each cube's center and all 8 vertices; project; sort by depth
+    const cosX = Math.cos(r3d.rotX), sinX = Math.sin(r3d.rotX);
+    const cosY = Math.cos(r3d.rotY), sinY = Math.sin(r3d.rotY);
+    function rot(p) {
+      // Rotate around Y then X
+      let x = p[0], y = p[1], z = p[2];
+      let x1 = x*cosY + z*sinY;
+      let z1 = -x*sinY + z*cosY;
+      let y2 = y*cosX - z1*sinX;
+      let z2 = y*sinX + z1*cosX;
+      return [x1, y2, z2];
+    }
+    function proj(p) {
+      const d = 6;
+      const f = d / (d + p[2]);
+      return [cx + p[0]*scale*f, cy - p[1]*scale*f];
+    }
+    const faces = [];
+    const size = 0.46; // half-edge of each unit cube (slight gap)
+    for (const c of cubes) {
+      // 8 vertices of the cube centered at (c.cx, -c.cz, c.cy) — remap axes:
+      // Up should be z-axis of our data. In 3D: let drawing's y-up correspond to data's z. let drawing's x = data's x, z = data's y.
+      const px = c.cx, py = (1 - c.cz), pz = (c.cy - 1) * -1; // but we flip y so that z=0 is at bottom
+      // Simpler: just use (x, z, y) remap and invert z so that z=2 is on top
+      // Actually let's just use (c.cx, c.cz, c.cy) where cz is up, flip cz so bigger z=up looks up
+      // Our drawing: y_screen inverted. In proj we do cy - p[1]*scale, so larger p[1] goes up on screen.
+      // So we want up = z. Set p = [c.cx, c.cz, c.cy]
+      const base = [c.cx, c.cz, c.cy];
+      const verts = [];
+      for (const dz of [-size, size]) for (const dy of [-size, size]) for (const dx of [-size, size]) {
+        verts.push(rot([base[0]+dx, base[1]+dz, base[2]+dy]));
+      }
+      // 6 faces of the cube with vertex indices
+      // Vertex index: bit 0=x, bit 1=y, bit 2=z (dx, dy, dz = -/+)
+      // -x face: 0,2,6,4  +x face: 1,3,7,5
+      // -y face: 0,1,5,4  +y face: 2,3,7,6
+      // -z face: 0,1,3,2  +z face: 4,5,7,6
+      const faceList = [
+        [0,2,6,4,-1,0,0],[1,3,7,5,1,0,0],
+        [0,1,5,4,0,-1,0],[2,3,7,6,0,1,0],
+        [0,1,3,2,0,0,-1],[4,5,7,6,0,0,1],
+      ];
+      for (const fd of faceList) {
+        const vs = [verts[fd[0]], verts[fd[1]], verts[fd[2]], verts[fd[3]]];
+        const centerZ = (vs[0][2] + vs[1][2] + vs[2][2] + vs[3][2]) / 4;
+        // Compute normal in rotated space from face direction & apply rotation
+        const nRaw = rot([fd[4], fd[6], fd[5]]);  // our mapping: data normals are (nx, nz, ny); but let's just compute from projected
+        // Simpler: compute 2D cross product of projected polygon for backface culling
+        faces.push({vs, z: centerZ, color: colors[c.piece] || '#999'});
+      }
+    }
+    // Sort back-to-front
+    faces.sort((a,b) => b.z - a.z);
+    for (const f of faces) {
+      const p0 = proj(f.vs[0]), p1 = proj(f.vs[1]), p2 = proj(f.vs[2]), p3 = proj(f.vs[3]);
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.lineTo(p3[0], p3[1]);
+      ctx.closePath();
+      ctx.fillStyle = f.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  r3d.draw = draw;
+  draw();
+
+  let lastX, lastY;
+  canvas.onmousedown = (e) => { r3d.dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.style.cursor = 'grabbing'; };
+  window.addEventListener('mousemove', (e) => {
+    if (!r3d.dragging) return;
+    r3d.rotY += (e.clientX - lastX) * 0.01;
+    r3d.rotX += (e.clientY - lastY) * 0.01;
+    lastX = e.clientX; lastY = e.clientY;
+    draw();
+  });
+  window.addEventListener('mouseup', () => { r3d.dragging = false; if (canvas) canvas.style.cursor = 'grab'; });
+  // touch
+  canvas.ontouchstart = (e) => { if (e.touches.length !== 1) return; r3d.dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; };
+  canvas.ontouchmove = (e) => {
+    if (!r3d.dragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    r3d.rotY += (e.touches[0].clientX - lastX) * 0.01;
+    r3d.rotX += (e.touches[0].clientY - lastY) * 0.01;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    draw();
+  };
+  canvas.ontouchend = () => { r3d.dragging = false; };
+}
+
+// ---------- Tabs ----------
+function switchTab(page) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.page === page);
+  });
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.toggle('active', p.id === 'page-' + page);
+  });
+  if (page === 'list') renderList();
+  if (page === 'records') { if (fileMode) loadRecordsFromFile(); else renderRecords(); }
+  if (page === 'compare') { if (!cmpState.initialized) { cmpState.initialized = true; runCompare(); } }
+}
+document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.page); });
+
+// ---------- Compare page ----------
+const cmpState = { rotX: -0.4, rotY: 0.6, sync: true, canvases: {}, sols: {}, initialized: false };
+
+function cmpDrawCube(canvas, sol, state) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const scale = Math.min(w, h) / 7;
+  const colors = {V:'#e53935', L:'#fb8c00', T:'#fdd835', Z:'#43a047', A:'#1e88e5', B:'#8e24aa', P:'#ec407a'};
+  const cosX = Math.cos(state.rotX), sinX = Math.sin(state.rotX);
+  const cosY = Math.cos(state.rotY), sinY = Math.sin(state.rotY);
+  function rot(p) {
+    const x = p[0], y = p[1], z = p[2];
+    const x1 = x*cosY + z*sinY;
+    const z1 = -x*sinY + z*cosY;
+    const y2 = y*cosX - z1*sinX;
+    const z2 = y*sinX + z1*cosX;
+    return [x1, y2, z2];
+  }
+  function proj(p) {
+    const d = 6, f = d / (d + p[2]);
+    return [cx + p[0]*scale*f, cy - p[1]*scale*f];
+  }
+  const faces = [];
+  const size = 0.46;
+  for (let i = 0; i < 27; i++) {
+    const z = Math.floor(i/9), rem = i%9, y = Math.floor(rem/3), x = rem%3;
+    const base = [x - 1, z - 1, y - 1];
+    const verts = [];
+    for (const dz of [-size, size]) for (const dy of [-size, size]) for (const dx of [-size, size]) {
+      verts.push(rot([base[0]+dx, base[1]+dz, base[2]+dy]));
+    }
+    const faceList = [[0,2,6,4],[1,3,7,5],[0,1,5,4],[2,3,7,6],[0,1,3,2],[4,5,7,6]];
+    for (const fd of faceList) {
+      const vs = [verts[fd[0]], verts[fd[1]], verts[fd[2]], verts[fd[3]]];
+      const centerZ = (vs[0][2]+vs[1][2]+vs[2][2]+vs[3][2]) / 4;
+      faces.push({vs, z: centerZ, color: colors[sol[i]]});
+    }
+  }
+  faces.sort((a,b) => b.z - a.z);
+  for (const f of faces) {
+    const p0 = proj(f.vs[0]), p1 = proj(f.vs[1]), p2 = proj(f.vs[2]), p3 = proj(f.vs[3]);
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]);
+    ctx.lineTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]);
+    ctx.lineTo(p3[0], p3[1]);
+    ctx.closePath();
+    ctx.fillStyle = f.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function cmpRedraw() {
+  for (const side of ['A', 'B']) {
+    const c = cmpState.canvases[side]; if (!c) continue;
+    cmpDrawCube(c, cmpState.sols[side], cmpState);
+  }
+}
+
+function cmpMakeCanvas(containerId, side) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = container.clientWidth || 360;
+  canvas.height = 360;
+  canvas.style.cursor = 'grab';
+  canvas.style.display = 'block';
+  canvas.style.width = '100%';
+  container.appendChild(canvas);
+  cmpState.canvases[side] = canvas;
+  let dragging = false, lastX = 0, lastY = 0;
+  canvas.onmousedown = (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.style.cursor = 'grabbing'; };
+  canvas.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    cmpState.rotY += (e.clientX - lastX) * 0.01;
+    cmpState.rotX += (e.clientY - lastY) * 0.01;
+    lastX = e.clientX; lastY = e.clientY;
+    cmpRedraw();
+  });
+  window.addEventListener('mouseup', () => { dragging = false; canvas.style.cursor = 'grab'; });
+}
+
+function cmpFormatDiff(solA, solB) {
+  // Build HTML for text layer display with diff highlighted
+  const layers = ['底層 (z=0)', '中層 (z=1)', '頂層 (z=2)'];
+  function render(sol, other) {
+    let html = '';
+    for (let z = 0; z < 3; z++) {
+      html += `<div style="color:#6b7280;font-size:11px;margin-top:${z?6:0}px">${layers[z]}</div>`;
+      for (let y = 0; y < 3; y++) {
+        let row = '  ';
+        for (let x = 0; x < 3; x++) {
+          const i = z*9 + y*3 + x;
+          const ch = sol[i];
+          const diff = ch !== other[i];
+          if (diff) row += `<b style="color:#991b1b">${ch}★</b> `;
+          else row += ch + '  ';
+        }
+        html += `<div>${row}</div>`;
+      }
+    }
+    return html;
+  }
+  return [render(solA, solB), render(solB, solA)];
+}
+
+function runCompare() {
+  const a = Math.max(1, Math.min(240, +document.getElementById('cmpA').value || 1));
+  const b = Math.max(1, Math.min(240, +document.getElementById('cmpB').value || 1));
+  const solA = SOLUTIONS[a-1];
+  const solB = SOLUTIONS[b-1];
+  cmpState.sols.A = solA; cmpState.sols.B = solB;
+  document.getElementById('cmpTitleA').textContent = `#${a}`;
+  document.getElementById('cmpTitleB').textContent = `#${b}`;
+  cmpMakeCanvas('cmpView3dA', 'A');
+  cmpMakeCanvas('cmpView3dB', 'B');
+  cmpRedraw();
+  const [htmlA, htmlB] = cmpFormatDiff(solA, solB);
+  document.getElementById('cmpTextA').innerHTML = htmlA;
+  document.getElementById('cmpTextB').innerHTML = htmlB;
+  let diff = 0;
+  for (let i = 0; i < 27; i++) if (solA[i] !== solB[i]) diff++;
+  document.getElementById('cmpDiffCount').textContent = `差異格數：${diff} / 27`;
+}
+
+document.getElementById('btnCompare').onclick = runCompare;
+document.getElementById('cmpA').addEventListener('change', runCompare);
+document.getElementById('cmpB').addEventListener('change', runCompare);
+
+// ---------- Init ----------
+renderInputGrids();
+updateCounts();
+renderRecords();
+loadRecordsFromFile();
+
+// Handle #input=<27-char> from soma-input.html
+(function autoLoadFromHash() {
+  const m = location.hash.match(/#input=([VLTZABP]{27})/);
+  if (!m) return;
+  currentGrid = m[1].split('');
+  renderInputGrids(); updateCounts();
+  document.getElementById('textInput').value = m[1];
+  document.getElementById('btnIdentify').click();
+})();
+</script>
+</body>
+</html>

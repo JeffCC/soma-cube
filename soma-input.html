@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Soma Cube 立體擺放輸入</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #eef1f3; --panel: #ffffff; --ink: #17212b; --muted: #5b6875;
+    --line: #d5dce2; --accent: #d2421b; --stage: #e3e8ec;
+    --cV: #e53935; --cL: #fb8c00; --cT: #fdd835; --cZ: #43a047;
+    --cA: #1e88e5; --cB: #8e24aa; --cP: #ec407a;
+    --font: "Noto Sans TC", "Microsoft JhengHei", -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; font-family: var(--font); color: var(--ink); background: var(--bg); font-size: 14px; }
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; max-width: 1300px; margin: 0 auto; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; font-weight: 900; }
+  h1 .accent { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; }
+  aside, main > .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  aside { display: grid; gap: 14px; align-content: start; }
+  aside h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pieces { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .pbtn { padding: 4px 2px; border: 2px solid transparent; border-radius: 4px; cursor: pointer;
+    font: 700 14px var(--mono); color: #fff;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; }
+  .pbtn .ico { pointer-events: none; display: block; }
+  .pbtn .ico svg { display: block; width: 42px; height: 28px; }
+  .pbtn.V { background: var(--cV); } .pbtn.L { background: var(--cL); }
+  .pbtn.T { background: var(--cT); color: #333; } .pbtn.Z { background: var(--cZ); }
+  .pbtn.A { background: var(--cA); } .pbtn.B { background: var(--cB); } .pbtn.P { background: var(--cP); }
+  .pbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .pbtn.active { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
+  .controls { font-size: 13px; color: var(--muted); }
+  .controls ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
+  kbd { font: 600 11px var(--mono); background: var(--bg); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+  .status { font-size: 13px; }
+  .status .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .status b { font-family: var(--mono); }
+  .actions { display: grid; gap: 6px; }
+  button.btn { padding: 8px 12px; background: var(--ink); color: #fff; border: none;
+    border-radius: 4px; cursor: pointer; font: 600 13px var(--font); }
+  button.btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.btn.sec { background: #e5e7eb; color: var(--ink); }
+  button.btn.sec:hover { background: #d1d5db; }
+  button.btn.danger { background: #fee2e2; color: #991b1b; }
+  .zbuttons { display: grid; gap: 4px; }
+  .zb { padding: 8px; border: 2px solid var(--line); background: var(--panel); border-radius: 4px;
+    cursor: pointer; font: 600 13px var(--font); color: var(--ink); text-align: left; }
+  .zb:hover { border-color: var(--muted); }
+  .zb.active { border-color: var(--accent); background: #fff5f1; color: var(--accent); }
+  .zb:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint-text { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  #stage { background: var(--stage); border-radius: 6px; height: 560px; position: relative; overflow: hidden; border: 1px solid var(--line); }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .overlay { position: absolute; top: 10px; left: 12px; display: flex; gap: 8px; pointer-events: none; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 3px;
+    padding: 4px 8px; font: 600 12px var(--mono); letter-spacing: 0.03em; }
+  .chip.active { border-color: var(--accent); color: var(--accent); }
+  .hint { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--muted);
+    pointer-events: none; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 3px; }
+  #output { margin-top: 10px; }
+  .text-format { font-family: var(--mono); background: #f3f4f6; padding: 10px;
+    border-radius: 4px; white-space: pre; font-size: 13px; }
+  .export-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .export-row input { flex: 1; min-width: 200px; padding: 6px 8px; font: 500 13px var(--mono);
+    border: 1px solid var(--line); border-radius: 3px; }
+  .msg { padding: 8px 12px; border-radius: 4px; margin: 6px 0; font-size: 13px; }
+  .msg.ok { background: #d1fae5; color: #065f46; }
+  .msg.err { background: #fee2e2; color: #991b1b; }
+  .msg.info { background: #dbeafe; color: #1e40af; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <h1>Soma Cube <span class="accent">立體擺放</span>輸入</h1>
+    <span class="sub">點選方塊 · A/S/D 旋轉 · 滑鼠移動定位 · 點擊擺入</span>
+  </header>
+
+  <aside>
+    <div>
+      <h3>選擇方塊</h3>
+      <div class="pieces" id="palette">
+        <button class="pbtn V" data-p="V">V</button>
+        <button class="pbtn L" data-p="L">L</button>
+        <button class="pbtn T" data-p="T">T</button>
+        <button class="pbtn Z" data-p="Z">Z</button>
+        <button class="pbtn A" data-p="A">A</button>
+        <button class="pbtn B" data-p="B">B</button>
+        <button class="pbtn P" data-p="P">P</button>
+      </div>
+    </div>
+    <div class="status" id="statusPanel">
+      <div class="row"><span>已擺放</span><b id="placedCount">0 / 7</b></div>
+      <div class="row"><span>已填格</span><b id="filledCount">0 / 27</b></div>
+    </div>
+    <div>
+      <h3>Z 層切換</h3>
+      <div class="zbuttons" id="zButtons">
+        <button class="zb" data-z="2">頂層 Z=2</button>
+        <button class="zb" data-z="1">中層 Z=1</button>
+        <button class="zb active" data-z="0">底層 Z=0</button>
+      </div>
+      <p class="hint-text">Z 代表方塊「最底格」的 Z 值。非平面方塊 (A/B/P) 若放 Z=2 會往上凸出。</p>
+    </div>
+    <div class="controls">
+      <h3>操作</h3>
+      <ul>
+        <li><kbd>點選</kbd> 上方調色盤選一塊</li>
+        <li><kbd>A</kbd> / <kbd>S</kbd> / <kbd>D</kbd> 旋轉 X/Y/Z 軸</li>
+        <li><kbd>滑鼠</kbd> 水平移動定位</li>
+        <li><kbd>滾輪</kbd> 或 <kbd>↑</kbd><kbd>↓</kbd> 或左側 Z 按鈕 切換層</li>
+        <li><kbd>左鍵</kbd> 擺入（綠色＝可放，紅色＝不可）</li>
+        <li><kbd>Esc</kbd> 取消目前這塊</li>
+        <li><kbd>U</kbd> 復原上一步</li>
+        <li><kbd>右鍵拖曳</kbd> 旋轉視角</li>
+      </ul>
+    </div>
+    <div class="actions">
+      <button class="btn sec" id="btnUndo">復原上一步 (U)</button>
+      <button class="btn sec" id="btnReset">全部清除</button>
+      <button class="btn" id="btnExport" disabled>輸出 27 字文字</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="card">
+      <div id="stage">
+        <div class="overlay">
+          <span class="chip" id="pieceChip">尚未選擇</span>
+          <span class="chip" id="zChip">Z = 0</span>
+          <span class="chip" id="validChip"></span>
+        </div>
+        <div class="hint">右鍵拖曳＝旋轉視角 · 滾輪＝切換 Z 層（Shift+滾輪＝縮放）</div>
+      </div>
+      <div id="output"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- Isometric SVG icon generator ----------
+function pieceIconSVG(cells, colorHex) {
+  const s = 6, cos30 = 0.866, sin30 = 0.5;
+  const toIso = (x,y,z) => [(x - y) * cos30 * s, (x + y) * sin30 * s - z * s];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [cx,cy,cz] of cells) {
+    for (const dx of [0,1]) for (const dy of [0,1]) for (const dz of [0,1]) {
+      const [sx,sy] = toIso(cx+dx, cy+dy, cz+dz);
+      if (sx < minX) minX = sx; if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+    }
+  }
+  const pad = 1, w = maxX - minX + pad*2, h = maxY - minY + pad*2;
+  const offX = -minX + pad, offY = -minY + pad;
+  const depth = c => -c[0] + c[1] - c[2];
+  const sorted = cells.slice().sort((a,b) => depth(b) - depth(a));
+  const hex = parseInt(colorHex.replace('#',''), 16);
+  const r0 = (hex>>16)&255, g0 = (hex>>8)&255, b0 = hex&255;
+  const sh = f => `rgb(${Math.min(255,Math.round(r0*f))},${Math.min(255,Math.round(g0*f))},${Math.min(255,Math.round(b0*f))})`;
+  const topC = sh(1.05), rightC = sh(0.75), frontC = sh(0.55), strokeC = sh(0.25);
+  const poly = (pts, fill) => `<polygon points="${pts.map(p=>`${(p[0]+offX).toFixed(1)},${(p[1]+offY).toFixed(1)}`).join(' ')}" fill="${fill}" stroke="${strokeC}" stroke-width="0.4" stroke-linejoin="round"/>`;
+  let faces = '';
+  for (const [cx,cy,cz] of sorted) {
+    const top = [[cx,cy,cz+1],[cx+1,cy,cz+1],[cx+1,cy+1,cz+1],[cx,cy+1,cz+1]].map(p=>toIso(...p));
+    const right = [[cx+1,cy,cz],[cx+1,cy+1,cz],[cx+1,cy+1,cz+1],[cx+1,cy,cz+1]].map(p=>toIso(...p));
+    const front = [[cx,cy,cz],[cx+1,cy,cz],[cx+1,cy,cz+1],[cx,cy,cz+1]].map(p=>toIso(...p));
+    faces += poly(front, frontC) + poly(right, rightC) + poly(top, topC);
+  }
+  return `<svg viewBox="0 0 ${w.toFixed(1)} ${h.toFixed(1)}" preserveAspectRatio="xMidYMid meet">${faces}</svg>`;
+}
+
+// ---------- Piece shapes ----------
+const SHAPES = {
+  V: [[0,0,0],[1,0,0],[0,1,0]],
+  L: [[0,0,0],[1,0,0],[2,0,0],[0,1,0]],
+  T: [[0,0,0],[1,0,0],[2,0,0],[1,1,0]],
+  Z: [[0,0,0],[1,0,0],[1,1,0],[2,1,0]],
+  A: [[0,0,0],[1,0,0],[1,1,0],[1,1,1]],
+  B: [[0,0,0],[1,0,0],[0,1,0],[0,1,1]],
+  P: [[0,0,0],[1,0,0],[0,1,0],[0,0,1]],
+};
+const COLORS = {V:0xe53935, L:0xfb8c00, T:0xfdd835, Z:0x43a047, A:0x1e88e5, B:0x8e24aa, P:0xec407a};
+const COLOR_HEX = {V:'#e53935', L:'#fb8c00', T:'#fdd835', Z:'#43a047', A:'#1e88e5', B:'#8e24aa', P:'#ec407a'};
+
+// Rotations (90-deg around each axis)
+const rotXfn = ([x,y,z]) => [x, -z, y];
+const rotYfn = ([x,y,z]) => [z, y, -x];
+const rotZfn = ([x,y,z]) => [-y, x, z];
+function normalize(cells) {
+  const mx = Math.min(...cells.map(c=>c[0]));
+  const my = Math.min(...cells.map(c=>c[1]));
+  const mz = Math.min(...cells.map(c=>c[2]));
+  return cells.map(([x,y,z]) => [x-mx, y-my, z-mz]);
+}
+
+// ---------- Three.js scene ----------
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xe3e8ec);
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+camera.position.set(6.5, 5.5, 6.5);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(1, 1, 1);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 20;
+// Right mouse rotates, left mouse is reserved for placing
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+controls.enableZoom = false; // we handle wheel ourselves
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+sun.position.set(6, 10, 6); scene.add(sun);
+
+// Puzzle (x,y,z) with x=right, y=back-to-front, z=up.
+// Three.js map: puzzle (x,y,z) -> three (x, z, y). Simple identity on x; swap y&z.
+function P(x,y,z) { return new THREE.Vector3(x, z, y); }
+
+// Reference walls: bottom (z=0), left (x=0), back (y=0).
+// Walls at integer coords -0.5 so cubes placed at 0..2 look like filling 3x3 of unit squares.
+// Our cubes: center at integer, size 1. So cells span x in [-0.5, 2.5] etc. Walls at -0.5.
+const wallMat = new THREE.MeshPhysicalMaterial({
+  color: 0xbfe3ff, transparent: true, opacity: 0.17, roughness: 0.05, metalness: 0,
+  depthWrite: false, side: THREE.DoubleSide,
+});
+const planeGeo = new THREE.PlaneGeometry(3, 3);
+// Bottom (z=0 plane -> three y = -0.5)
+const wBottom = new THREE.Mesh(planeGeo, wallMat);
+wBottom.rotation.x = -Math.PI/2; wBottom.position.set(1, -0.5, 1); scene.add(wBottom);
+// Left (x=0 plane -> three x = -0.5)
+const wLeft = new THREE.Mesh(planeGeo, wallMat);
+wLeft.rotation.y = Math.PI/2; wLeft.position.set(-0.5, 1, 1); scene.add(wLeft);
+// Back (y=0 plane -> three z = -0.5)
+const wBack = new THREE.Mesh(planeGeo, wallMat);
+wBack.position.set(1, 1, -0.5); scene.add(wBack);
+
+// Edges to make walls visible
+const wallEdgeMat = new THREE.LineBasicMaterial({ color: 0x6f8fa8, transparent: true, opacity: 0.6 });
+[wBottom, wLeft, wBack].forEach(w => {
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(planeGeo), wallEdgeMat);
+  e.position.copy(w.position); e.rotation.copy(w.rotation); scene.add(e);
+});
+
+// 3x3x3 grid lines on each visible wall
+function addGridLines(wallMesh, axis) {
+  const mat = new THREE.LineBasicMaterial({ color: 0x6f8fa8, transparent: true, opacity: 0.5 });
+  for (let i = -1; i <= 1; i++) {
+    // For each wall we draw a cross grid
+    const pts1 = [], pts2 = [];
+    if (axis === 'bottom') {
+      pts1.push(new THREE.Vector3(-0.5+i+1, -0.5+0.01, -0.5), new THREE.Vector3(-0.5+i+1, -0.5+0.01, 2.5));
+      pts2.push(new THREE.Vector3(-0.5, -0.5+0.01, -0.5+i+1), new THREE.Vector3(2.5, -0.5+0.01, -0.5+i+1));
+    } else if (axis === 'left') {
+      pts1.push(new THREE.Vector3(-0.5+0.01, -0.5+i+1, -0.5), new THREE.Vector3(-0.5+0.01, -0.5+i+1, 2.5));
+      pts2.push(new THREE.Vector3(-0.5+0.01, -0.5, -0.5+i+1), new THREE.Vector3(-0.5+0.01, 2.5, -0.5+i+1));
+    } else if (axis === 'back') {
+      pts1.push(new THREE.Vector3(-0.5+i+1, -0.5, -0.5+0.01), new THREE.Vector3(-0.5+i+1, 2.5, -0.5+0.01));
+      pts2.push(new THREE.Vector3(-0.5, -0.5+i+1, -0.5+0.01), new THREE.Vector3(2.5, -0.5+i+1, -0.5+0.01));
+    }
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts1), mat));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), mat));
+  }
+}
+addGridLines(wBottom, 'bottom');
+addGridLines(wLeft, 'left');
+addGridLines(wBack, 'back');
+
+// Labels on the walls — "x", "y", "z" axes
+function textSprite(text, color) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+  const g = c.getContext('2d');
+  g.font = "700 32px 'Noto Sans TC', sans-serif";
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = color || '#5b6875'; g.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  m.scale.set(0.9, 0.45, 1); return m;
+}
+const lX = textSprite('→ x', '#d2421b'); lX.position.set(2.6, -0.5, 1); scene.add(lX);
+const lY = textSprite('↙ y', '#d2421b'); lY.position.set(1, -0.5, 2.6); scene.add(lY);
+const lZ = textSprite('↑ z', '#d2421b'); lZ.position.set(-0.5, 2.6, 1); scene.add(lZ);
+
+// Marker at corner (0,0,0) to make orientation unambiguous
+const originGeo = new THREE.SphereGeometry(0.08);
+const originMarker = new THREE.Mesh(originGeo, new THREE.MeshBasicMaterial({ color: 0xd2421b }));
+originMarker.position.set(-0.5, -0.5, -0.5); scene.add(originMarker);
+
+// ---------- State ----------
+const cubeGeo = new THREE.BoxGeometry(0.94, 0.94, 0.94);
+const edgeGeo = new THREE.EdgesGeometry(cubeGeo);
+const placed = []; // {piece, cells, group}
+const occupied = new Set(); // "x,y,z" strings
+let active = null; // {piece, cells (relative, with min 0), rotCount:{x,y,z}, group, zLayer, anchorXY}
+
+function cellKey(x,y,z) { return `${x},${y},${z}`; }
+
+function makePieceGroup(pieceLetter, cells, opts = {}) {
+  const g = new THREE.Group();
+  const col = COLORS[pieceLetter];
+  const mat = new THREE.MeshStandardMaterial({
+    color: col, roughness: 0.6, metalness: 0.05,
+    transparent: !!opts.transparent, opacity: opts.transparent ? (opts.opacity ?? 0.6) : 1,
+    depthWrite: !opts.transparent,
+  });
+  const emat = new THREE.LineBasicMaterial({ color: 0x0b1015, transparent: true, opacity: 0.35 });
+  cells.forEach(([cx, cy, cz]) => {
+    const m = new THREE.Mesh(cubeGeo, mat); m.position.copy(P(cx, cy, cz)); g.add(m);
+    const e = new THREE.LineSegments(edgeGeo, emat); e.position.copy(m.position); g.add(e);
+  });
+  g.userData.mat = mat;
+  return g;
+}
+
+// ---------- Palette ----------
+const palette = document.getElementById('palette');
+palette.querySelectorAll('.pbtn').forEach(btn => {
+  btn.onclick = () => startPiece(btn.dataset.p);
+});
+
+function startPiece(letter) {
+  if (active) cancelActive();
+  if (placed.find(p => p.piece === letter)) return;
+  // Fresh shape (copy)
+  const cells = SHAPES[letter].map(c => c.slice());
+  active = {
+    piece: letter,
+    base: cells,
+    rot: [], // sequence of 'x'/'y'/'z' rotations
+    zLayer: 0,
+    anchor: [0, 0], // (x, y) grid position where piece's anchor cell lands
+    group: null,
+  };
+  updateActivePieceVisual();
+  updateUI();
+}
+
+function cancelActive() {
+  if (!active) return;
+  if (active.group) scene.remove(active.group);
+  active = null;
+  updateUI();
+}
+
+function applyRotations(cells, seq) {
+  let out = cells.map(c => c.slice());
+  for (const axis of seq) {
+    if (axis === 'x') out = out.map(rotXfn);
+    else if (axis === 'y') out = out.map(rotYfn);
+    else if (axis === 'z') out = out.map(rotZfn);
+  }
+  return normalize(out);
+}
+
+function getActiveCellsAtAnchor() {
+  // The active piece's cells after rotation+normalize, offset to (anchor.x, anchor.y, zLayer).
+  const rotated = applyRotations(active.base, active.rot);
+  const [ax, ay] = active.anchor;
+  const az = active.zLayer;
+  return rotated.map(([x,y,z]) => [x+ax, y+ay, z+az]);
+}
+
+function isValidPlacement(cells) {
+  for (const [x,y,z] of cells) {
+    if (x < 0 || x > 2 || y < 0 || y > 2 || z < 0 || z > 2) return false;
+    if (occupied.has(cellKey(x,y,z))) return false;
+  }
+  return true;
+}
+
+function updateActivePieceVisual() {
+  if (!active) return;
+  if (active.group) scene.remove(active.group);
+  const cells = getActiveCellsAtAnchor();
+  const valid = isValidPlacement(cells);
+  active.group = makePieceGroup(active.piece, cells, { transparent: true, opacity: valid ? 0.75 : 0.4 });
+  // Tint red overlay if invalid: wrap by setting emissive
+  if (!valid) {
+    active.group.userData.mat.emissive = new THREE.Color(0xff0000);
+    active.group.userData.mat.emissiveIntensity = 0.6;
+  }
+  scene.add(active.group);
+  const chip = document.getElementById('validChip');
+  chip.textContent = valid ? '✓ 可放' : '✗ 不可放';
+  chip.style.color = valid ? '#065f46' : '#991b1b';
+  chip.style.borderColor = valid ? '#065f46' : '#991b1b';
+}
+
+function placeActive() {
+  if (!active) return false;
+  const cells = getActiveCellsAtAnchor();
+  if (!isValidPlacement(cells)) return false;
+  // Convert to solid piece
+  if (active.group) scene.remove(active.group);
+  const g = makePieceGroup(active.piece, cells);
+  scene.add(g);
+  placed.push({ piece: active.piece, cells, group: g });
+  cells.forEach(([x,y,z]) => occupied.add(cellKey(x,y,z)));
+  // Disable palette
+  palette.querySelector(`[data-p="${active.piece}"]`).disabled = true;
+  active = null;
+  updateUI();
+  checkComplete();
+  return true;
+}
+
+function undo() {
+  if (active) { cancelActive(); return; }
+  const last = placed.pop();
+  if (!last) return;
+  scene.remove(last.group);
+  last.cells.forEach(([x,y,z]) => occupied.delete(cellKey(x,y,z)));
+  palette.querySelector(`[data-p="${last.piece}"]`).disabled = false;
+  updateUI();
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('btnExport').disabled = true;
+}
+
+function resetAll() {
+  if (active) cancelActive();
+  for (const p of placed) scene.remove(p.group);
+  placed.length = 0;
+  occupied.clear();
+  palette.querySelectorAll('.pbtn').forEach(b => b.disabled = false);
+  updateUI();
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('btnExport').disabled = true;
+}
+
+// ---------- UI updates ----------
+function updateUI() {
+  document.getElementById('placedCount').textContent = `${placed.length} / 7`;
+  document.getElementById('filledCount').textContent = `${occupied.size} / 27`;
+  const z = active ? active.zLayer : 0;
+  document.getElementById('zChip').textContent = active ? `Z = ${active.zLayer}` : 'Z = —';
+  document.getElementById('pieceChip').textContent = active ? `${active.piece} 擺放中` : '尚未選擇';
+  document.getElementById('pieceChip').classList.toggle('active', !!active);
+  palette.querySelectorAll('.pbtn').forEach(b => {
+    b.classList.toggle('active', !!active && b.dataset.p === active.piece);
+  });
+  document.querySelectorAll('.zb').forEach(b => {
+    b.classList.toggle('active', +b.dataset.z === z);
+  });
+  if (!active) document.getElementById('validChip').textContent = '';
+}
+
+// Z-button click handlers
+document.querySelectorAll('.zb').forEach(btn => {
+  btn.onclick = () => {
+    if (!active) {
+      // allow clicking to just preview the "current layer" visually (future)
+      return;
+    }
+    active.zLayer = +btn.dataset.z;
+    updateActivePieceVisual();
+    updateUI();
+    renderer.domElement.focus();
+  };
+});
+
+// ---------- Mouse / keyboard ----------
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const dragPlane = new THREE.Plane();
+
+function updateActiveFromMouse(evt) {
+  if (!active) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  // Plane at three.js y = active.zLayer (center of z slice: y = active.zLayer in three)
+  // Our cells are at integer puzzle coords; cube centered at integer. For a piece at z=zLayer,
+  // place anchor y = zLayer in three.js coords.
+  dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,1,0), new THREE.Vector3(0, active.zLayer, 0));
+  const hit = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(dragPlane, hit)) return;
+  // Map three.js (x, y, z) back to puzzle (x, y, z): puzzle_x = three.x, puzzle_y = three.z, puzzle_z = three.y
+  const px = Math.round(hit.x);
+  const py = Math.round(hit.z);
+  active.anchor = [px, py];
+  updateActivePieceVisual();
+}
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!active) return;
+  updateActiveFromMouse(e);
+});
+renderer.domElement.addEventListener('click', (e) => {
+  if (e.button !== 0) return;
+  if (!active) return;
+  const ok = placeActive();
+  if (!ok) {
+    const chip = document.getElementById('validChip');
+    chip.textContent = '✗ 這個位置不能放';
+    setTimeout(() => updateActivePieceVisual(), 0);
+  }
+});
+renderer.domElement.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+renderer.domElement.addEventListener('wheel', (e) => {
+  if (active && !e.shiftKey) {
+    e.preventDefault();
+    const dir = e.deltaY > 0 ? -1 : 1;
+    active.zLayer = Math.max(0, Math.min(2, active.zLayer + dir));
+    updateActivePieceVisual();
+    updateUI();
+  } else {
+    // Manual zoom
+    const dolly = e.deltaY > 0 ? 1.1 : 0.9;
+    const dir = new THREE.Vector3().subVectors(camera.position, controls.target);
+    const newDist = dir.length() * dolly;
+    if (newDist > controls.minDistance && newDist < controls.maxDistance) {
+      dir.normalize().multiplyScalar(newDist);
+      camera.position.copy(controls.target).add(dir);
+    }
+  }
+}, { passive: false });
+
+window.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (!active && !['u','U'].includes(e.key)) return;
+  if (e.key === 'a' || e.key === 'A') { active.rot.push('x'); updateActivePieceVisual(); }
+  else if (e.key === 's' || e.key === 'S') { active.rot.push('y'); updateActivePieceVisual(); }
+  else if (e.key === 'd' || e.key === 'D') { active.rot.push('z'); updateActivePieceVisual(); }
+  else if (e.key === 'q' || e.key === 'Q' || e.key === 'ArrowDown') {
+    if (active) { e.preventDefault(); active.zLayer = Math.max(0, active.zLayer - 1); updateActivePieceVisual(); updateUI(); }
+  }
+  else if (e.key === 'e' || e.key === 'E' || e.key === 'ArrowUp') {
+    if (active) { e.preventDefault(); active.zLayer = Math.min(2, active.zLayer + 1); updateActivePieceVisual(); updateUI(); }
+  }
+  else if (e.key === '0') { if (active) { active.zLayer = 0; updateActivePieceVisual(); updateUI(); } }
+  else if (e.key === '1') { if (active) { active.zLayer = 1; updateActivePieceVisual(); updateUI(); } }
+  else if (e.key === '2') { if (active) { active.zLayer = 2; updateActivePieceVisual(); updateUI(); } }
+  else if (e.key === 'Escape') { cancelActive(); }
+  else if (e.key === 'u' || e.key === 'U') { undo(); }
+  else if (e.key === 'Enter' || e.key === ' ') { if (active) placeActive(); }
+});
+
+document.getElementById('btnUndo').onclick = undo;
+document.getElementById('btnReset').onclick = () => { if (confirm('全部清除？')) resetAll(); };
+document.getElementById('btnExport').onclick = exportText;
+
+// ---------- Resize ----------
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+// ---------- Render loop ----------
+function loop() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- Output ----------
+function checkComplete() {
+  if (placed.length === 7 && occupied.size === 27) {
+    document.getElementById('btnExport').disabled = false;
+    exportText();
+  }
+}
+
+function exportText() {
+  // Build 27-cell string
+  const grid = new Array(27).fill('.');
+  for (const p of placed) {
+    for (const [x,y,z] of p.cells) {
+      grid[z*9 + y*3 + x] = p.piece;
+    }
+  }
+  const s27 = grid.join('');
+  // Layer text
+  const layers = ['底層 (z=0)', '中層 (z=1)', '頂層 (z=2)'];
+  let txt = '';
+  for (let z = 0; z < 3; z++) {
+    txt += layers[z] + '\n';
+    for (let y = 0; y < 3; y++) {
+      let row = '  ';
+      for (let x = 0; x < 3; x++) row += grid[z*9+y*3+x] + ' ';
+      txt += row.trimEnd() + '\n';
+    }
+    if (z < 2) txt += '\n';
+  }
+  const complete = !grid.includes('.');
+  const out = document.getElementById('output');
+  out.innerHTML = `
+    <div class="msg ${complete ? 'ok' : 'info'}">${complete ? '✓ 7 塊已擺齊' : '尚未完成（' + placed.length + '/7 塊）'}</div>
+    <div class="text-format">${txt}</div>
+    <div class="export-row">
+      <label>27 字格式：</label>
+      <input id="text27" value="${s27}" readonly onclick="this.select()">
+      <button class="btn sec" id="btnCopy">複製</button>
+      <button class="btn sec" id="btnOpenDB">在資料庫識別</button>
+    </div>
+  `;
+  document.getElementById('btnCopy').onclick = () => {
+    navigator.clipboard.writeText(s27);
+    document.getElementById('btnCopy').textContent = '已複製';
+    setTimeout(() => document.getElementById('btnCopy').textContent = '複製', 1500);
+  };
+  document.getElementById('btnOpenDB').onclick = () => {
+    // Encode 27-string into URL fragment, open soma-db.html
+    window.open('soma-db.html#input=' + encodeURIComponent(s27), '_blank');
+  };
+}
+
+// Inject piece icons into palette
+['V','L','T','Z','A','B','P'].forEach(p => {
+  const btn = document.querySelector(`.pbtn[data-p="${p}"]`);
+  if (!btn) return;
+  const ico = document.createElement('div');
+  ico.className = 'ico';
+  ico.innerHTML = pieceIconSVG(SHAPES[p], COLOR_HEX[p]);
+  btn.appendChild(ico);
+});
+
+updateUI();
+</script>
+</body>
+</html>
